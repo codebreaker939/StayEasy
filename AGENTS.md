@@ -10,3 +10,22 @@
 - Do not modify native Android configuration unless explicitly needed.
 - After meaningful changes, run `dart format .`, `flutter analyze`, and `flutter test`.
 - Make small, focused Git commits, but do not create commits unless explicitly requested.
+
+
+
+## Figma Source of Truth
+
+StayEasy Figma file:
+
+https://www.figma.com/design/cklJDBoj2GGMhJeTlvrBoN/StayEasy
+
+Figma file key:
+
+cklJDBoj2GGMhJeTlvrBoN
+
+Rules:
+- Treat Figma as the visual source of truth.
+- Inspect the relevant Figma frame before implementing a screen.
+- Do not modify the Figma file unless explicitly requested.
+- Reuse StayEasy variables, styles, and components where applicable.
+- Do not invent design tokens when they already exist in Figma.

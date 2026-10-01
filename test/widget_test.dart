@@ -145,6 +145,13 @@ void main() {
       AppRoutes.search,
       '/hotel/mercer-mumbai',
       '/room/mercer-deluxe',
+      '/room/mercer-deluxe/dates',
+      '/reviews',
+      '/booking/guest',
+      '/booking/review',
+      '/booking/confirmation',
+      '/booking/success',
+      '/trips',
     ];
     for (final width in widths) {
       tester.view.physicalSize = Size(width, 1000);

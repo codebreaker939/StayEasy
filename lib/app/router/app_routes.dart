@@ -7,7 +7,22 @@ abstract final class AppRoutes {
   static const hotelName = 'hotel-details';
   static const room = '/room/:roomId';
   static const roomName = 'room-details';
+  static const dates = '/room/:roomId/dates';
+  static const datesName = 'date-selection';
+  static const reviews = '/reviews';
+  static const reviewsName = 'reviews';
+  static const bookingGuest = '/booking/guest';
+  static const bookingGuestName = 'booking-guest';
+  static const bookingReview = '/booking/review';
+  static const bookingReviewName = 'booking-review';
+  static const bookingConfirmation = '/booking/confirmation';
+  static const bookingConfirmationName = 'booking-confirmation';
+  static const bookingSuccess = '/booking/success';
+  static const bookingSuccessName = 'booking-success';
+  static const trips = '/trips';
+  static const tripsName = 'trips';
 
   static String hotelPath(String id) => '/hotel/$id';
   static String roomPath(String id) => '/room/$id';
+  static String datesPath(String id) => '/room/$id/dates';
 }

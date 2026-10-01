@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/app_routes.dart';
+
 import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
@@ -197,11 +199,7 @@ class RoomDetailsPage extends ConsumerWidget {
               ),
               FilledButton(
                 style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Date selection is the next flow.'),
-                  ),
-                ),
+                onPressed: () => context.push(AppRoutes.datesPath(room.id)),
                 child: const Text('Select dates'),
               ),
             ],

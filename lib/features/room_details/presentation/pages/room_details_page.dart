@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 
+import '../../../booking/application/booking_provider.dart';
+import '../../../booking/presentation/widgets/review_preview.dart';
+
 import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
@@ -132,47 +135,12 @@ class RoomDetailsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 24),
               Text(room.description, style: StayEasyTypography.bodyLarge),
-              const SizedBox(height: 20),
-              const AIInsightCard(
-                title: 'Why guests choose this room',
-                body: 'Guests who chose this room often mention the quiet city-facing outlook, restful king bed and useful work desk.',
-              ),
               const SizedBox(height: 28),
-              const SectionTitle(
-                'A review of this room',
-                action: 'October stay',
-              ),
+              const SectionTitle('Verified room review'),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(StayEasySpacing.space16),
-                decoration: BoxDecoration(
-                  color: StayEasyColors.surface,
-                  border: Border.all(color: StayEasyColors.border),
-                  borderRadius: StayEasyRadii.rounded16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        CircleAvatar(radius: 16, child: Text('R')),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Rohan · October 2025',
-                            style: StayEasyTypography.labelLarge,
-                          ),
-                        ),
-                        Icon(Icons.star_rounded, color: StayEasyColors.warning),
-                        Text('5.0'),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '“The room was quiet and the bed was genuinely comfortable. Loved having a proper desk too.”',
-                    ),
-                  ],
-                ),
+              ReviewPreview(
+                reviews: ref.watch(roomReviewsProvider(roomId)),
+                title: 'Selected room feedback',
               ),
             ],
           ),

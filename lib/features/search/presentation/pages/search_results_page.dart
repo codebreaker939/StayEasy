@@ -8,6 +8,7 @@ import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
+import '../search_filter_sheet.dart';
 
 class SearchResultsPage extends ConsumerWidget {
   const SearchResultsPage({super.key});
@@ -73,47 +74,16 @@ class SearchResultsPage extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Filters are coming soon.')),
-                    ),
+                    onPressed: () => showSearchFilterSheet(context, ref),
                     icon: const Icon(Icons.tune_rounded),
-                    label: const Text('Filter ·2'),
+                    label: const Text('Filter'),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                children: [
-                  _filterChip(context, ref, 'Business', 'Mumbai'),
-                  _filterChip(context, ref, 'Wi-Fi', 'Mumbai'),
-                  ActionChip(
-                    avatar: const Icon(
-                      Icons.auto_awesome_rounded,
-                      color: StayEasyColors.aiAccent,
-                      size: 16,
-                    ),
-                    label: const Text('AI match'),
-                    onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('AI matching is a visual preview.'),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              _activeFilters(ref, search),
               const SizedBox(height: 24),
-              const SectionTitle(
-                'Recommended for your stay',
-                action: 'Best match',
-              ),
-              const SizedBox(height: 12),
-              const AIInsightCard(
-                title: '94% match',
-                body: 'Quiet area · strong Wi-Fi · under ₹5,000',
-                caption:
-                    'Based on your destination, dates and guest preferences.',
-              ),
+              const SectionTitle('Stays matching your filters'),
               const SizedBox(height: 12),
               if (results.isEmpty)
                 Padding(
@@ -133,9 +103,6 @@ class SearchResultsPage extends ConsumerWidget {
                     child: HotelCard(
                       hotel: hotel,
                       imagePath: hotel.detailImage,
-                      matchLabel: hotel.id == 'mercer-mumbai'
-                          ? '94% match'
-                          : null,
                     ),
                   ),
                 ],
@@ -154,16 +121,49 @@ class SearchResultsPage extends ConsumerWidget {
     );
   }
 
-  Widget _filterChip(
-    BuildContext context,
-    WidgetRef ref,
-    String text,
-    String destination,
-  ) => ActionChip(
-    label: Text(text),
-    onPressed: () =>
-        ref.read(searchStateProvider.notifier).setDestination(destination),
-  );
+  Widget _activeFilters(WidgetRef ref, SearchState search) {
+    final notifier = ref.read(searchStateProvider.notifier);
+    final chips = <(String, String, String)>[];
+    if (search.month != null) {
+      chips.add(('month', _month(search.month!), ''));
+    }
+    if (search.checkIn != null && search.checkOut != null) {
+      chips.add((
+        'month',
+        '${search.checkIn!.day}–${search.checkOut!.day} ${_month(search.checkIn!.month)}',
+        '',
+      ));
+    }
+    if (search.guests != 2) {
+      chips.add(('guests', '${search.guests} guests', ''));
+    }
+    if (search.maxPriceInr != null) {
+      chips.add(('price', '≤ ₹${search.maxPriceInr!.round()}', ''));
+    }
+    if (search.minRating != null) {
+      chips.add(('rating', '★ ${search.minRating!.toStringAsFixed(1)}+', ''));
+    }
+    for (final value in search.amenities) {
+      chips.add(('amenity', value, value));
+    }
+    for (final value in search.roomTypes) {
+      chips.add(('room', value, value));
+    }
+    for (final value in search.vibes) {
+      chips.add(('vibe', value, value));
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        for (final (kind, label, value) in chips)
+          InputChip(
+            label: Text(label),
+            onDeleted: () => notifier.removeInterpretedFilter(kind, value),
+          ),
+      ],
+    );
+  }
 
   String _sortLabel(HotelSort sort) => switch (sort) {
     HotelSort.recommended => 'Sort · Recommended',
@@ -201,3 +201,18 @@ class SearchResultsPage extends ConsumerWidget {
     }
   }
 }
+
+String _month(int month) => const [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+][month - 1];

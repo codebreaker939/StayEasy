@@ -10,6 +10,7 @@ import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../../booking/application/booking_provider.dart';
+import '../../../ai/presentation/ai_search_panel.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
 
@@ -114,11 +115,7 @@ class ExplorePage extends ConsumerWidget {
               const SizedBox(height: 24),
               _searchCard(context, ref, search.destination, search.guests),
               const SizedBox(height: 20),
-              const AIInsightCard(
-                title: 'Ask StayEasy AI',
-                body: 'Find me a quiet room with a balcony under ₹5,000.',
-                caption: 'A little help finding your kind of stay.',
-              ),
+              const AiSearchPanel(),
               const SizedBox(height: 28),
               const SectionTitle('Browse by trip'),
               const SizedBox(height: 12),
@@ -161,10 +158,8 @@ class ExplorePage extends ConsumerWidget {
                     mainAxisSpacing: 16,
                     mainAxisExtent: 354,
                   ),
-                  itemBuilder: (context, index) => HotelCard(
-                    hotel: featured[index],
-                    matchLabel: index == 0 ? '94% match' : null,
-                  ),
+                  itemBuilder: (context, index) =>
+                      HotelCard(hotel: featured[index]),
                 )
               else
                 Column(
@@ -172,12 +167,7 @@ class ExplorePage extends ConsumerWidget {
                     for (final hotel in featured)
                       Padding(
                         padding: const EdgeInsets.only(bottom: 12),
-                        child: HotelCard(
-                          hotel: hotel,
-                          matchLabel: hotel.id == 'mercer-mumbai'
-                              ? '94% match'
-                              : null,
-                        ),
+                        child: HotelCard(hotel: hotel),
                       ),
                   ],
                 ),

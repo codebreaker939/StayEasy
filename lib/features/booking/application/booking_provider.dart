@@ -222,6 +222,23 @@ final reviewsProvider = FutureProvider<List<Review>>((ref) async {
   final room = await ref.watch(currentBookingRoomProvider.future);
   return ref.watch(reviewRepositoryProvider).getReviews(hotelId: room?.hotelId);
 });
+final hotelReviewsProvider = FutureProvider.family<List<Review>, String>(
+  (ref, hotelId) =>
+      ref.watch(reviewRepositoryProvider).getReviews(hotelId: hotelId),
+);
+final roomReviewsProvider = FutureProvider.family<List<Review>, String>((
+  ref,
+  roomId,
+) async {
+  final room = await ref.watch(roomFutureProvider(roomId).future);
+  if (room == null) return const [];
+  final reviews = await ref
+      .watch(reviewRepositoryProvider)
+      .getReviews(hotelId: room.hotelId);
+  return reviews
+      .where((review) => review.roomId == roomId)
+      .toList(growable: false);
+});
 final rankedReviewsProvider = Provider<AsyncValue<List<RankedReview>>>((ref) {
   final booking = ref.watch(bookingProvider);
   return ref

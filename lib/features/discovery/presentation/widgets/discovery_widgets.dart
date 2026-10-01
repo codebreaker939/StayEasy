@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
 import '../../../../core/theme/stayeasy_colors.dart';
-import '../../../../core/theme/stayeasy_elevation.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
@@ -140,69 +139,15 @@ class AmenityChip extends StatelessWidget {
   );
 }
 
-class AIInsightCard extends StatelessWidget {
-  const AIInsightCard({
-    super.key,
-    required this.title,
-    required this.body,
-    this.caption = 'AI insights are based on guest reviews.',
-  });
-  final String title;
-  final String body;
-  final String caption;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(StayEasySpacing.space16),
-    decoration: BoxDecoration(
-      color: StayEasyColors.surface,
-      border: Border.all(color: StayEasyColors.aiAccent.withValues(alpha: .2)),
-      borderRadius: StayEasyRadii.rounded16,
-      boxShadow: StayEasyElevation.level1,
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.auto_awesome_rounded, color: StayEasyColors.aiAccent),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: StayEasyTypography.titleMedium.copyWith(
-                  color: StayEasyColors.aiAccent,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(body, style: StayEasyTypography.bodyMedium),
-              const SizedBox(height: 6),
-              Text(
-                caption,
-                style: StayEasyTypography.caption.copyWith(
-                  color: StayEasyColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
 class HotelCard extends ConsumerWidget {
   const HotelCard({
     super.key,
     required this.hotel,
     this.compact = false,
-    this.matchLabel,
     this.imagePath,
   });
   final Hotel hotel;
   final bool compact;
-  final String? matchLabel;
   final String? imagePath;
 
   @override
@@ -248,12 +193,6 @@ class HotelCard extends ConsumerWidget {
                           height: 184,
                           width: double.infinity,
                         ),
-                        if (matchLabel != null)
-                          Positioned(
-                            left: 12,
-                            top: 12,
-                            child: _badge(matchLabel!, StayEasyColors.primary),
-                          ),
                         Positioned(
                           right: 8,
                           top: 8,

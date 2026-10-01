@@ -9,6 +9,8 @@ import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
+import '../../../booking/application/booking_provider.dart';
+import '../../../booking/presentation/widgets/review_preview.dart';
 
 class HotelDetailsPage extends ConsumerStatefulWidget {
   const HotelDetailsPage({super.key, required this.hotelId});
@@ -89,26 +91,6 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                 children: [
                   StayImage(path: hotel.detailImage ?? hotel.image),
                   Positioned(
-                    left: 16,
-                    bottom: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: StayEasyColors.primary,
-                        borderRadius: StayEasyRadii.rounded28,
-                      ),
-                      child: Text(
-                        '94% match',
-                        style: StayEasyTypography.labelMedium.copyWith(
-                          color: StayEasyColors.onPrimary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
                     right: 16,
                     bottom: 16,
                     child: Container(
@@ -184,29 +166,6 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       ],
                     ),
                     const SizedBox(height: 28),
-                    const SectionTitle('Why guests choose this stay'),
-                    const SizedBox(height: 12),
-                    _reason(
-                      Icons.nights_stay_outlined,
-                      'A quieter corner',
-                      'Guests often mention a calm, restful atmosphere.',
-                    ),
-                    _reason(
-                      Icons.wifi_rounded,
-                      'Work-friendly',
-                      'Strong Wi-Fi and comfortable spaces for working.',
-                    ),
-                    _reason(
-                      Icons.place_outlined,
-                      'A good base',
-                      'Well placed for exploring the neighbourhood.',
-                    ),
-                    const SizedBox(height: 16),
-                    const AIInsightCard(
-                      title: 'StayEasy AI insight',
-                      body: 'Courtyard-facing rooms are most consistently described as quiet. October guests mention comfortable evenings and low humidity.',
-                    ),
-                    const SizedBox(height: 28),
                     const SectionTitle('Location'),
                     const SizedBox(height: 10),
                     Container(
@@ -236,7 +195,10 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       action: '4.8 / 5',
                     ),
                     const SizedBox(height: 12),
-                    _reviewCard(),
+                    ReviewPreview(
+                      reviews: ref.watch(hotelReviewsProvider(hotel.id)),
+                      title: 'Recent verified guest review',
+                    ),
                     const SizedBox(height: 28),
                     SectionTitle(
                       'Available rooms',
@@ -330,71 +292,6 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
           icon: Icons.event_available_outlined,
           title: 'Cancellation',
           value: 'Free until 16 Oct',
-        ),
-      ],
-    ),
-  );
-
-  Widget _reason(IconData icon, String title, String body) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: StayEasyColors.primary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: StayEasyTypography.labelLarge),
-              Text(
-                body,
-                style: StayEasyTypography.bodySmall.copyWith(
-                  color: StayEasyColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-
-  Widget _reviewCard() => Container(
-    padding: const EdgeInsets.all(StayEasySpacing.space16),
-    decoration: BoxDecoration(
-      color: StayEasyColors.surface,
-      border: Border.all(color: StayEasyColors.border),
-      borderRadius: StayEasyRadii.rounded16,
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            CircleAvatar(radius: 17, child: Text('A')),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Ananya · stayed October 2025',
-                style: StayEasyTypography.labelLarge,
-              ),
-            ),
-            Icon(Icons.star_rounded, color: StayEasyColors.warning, size: 18),
-            Text('5.0'),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          '“The courtyard room was peaceful after a busy day out. The team made everything feel easy.”',
-          style: StayEasyTypography.bodyMedium,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Relevant for October stays',
-          style: StayEasyTypography.caption.copyWith(
-            color: StayEasyColors.textSecondary,
-          ),
         ),
       ],
     ),

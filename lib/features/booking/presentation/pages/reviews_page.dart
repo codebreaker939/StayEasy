@@ -7,6 +7,8 @@ import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../application/booking_provider.dart';
+import '../../../ai/application/ai_providers.dart';
+import '../../../ai/domain/ai_models.dart';
 import '../widgets/booking_widgets.dart';
 
 class ReviewsPage extends ConsumerWidget {
@@ -178,29 +180,7 @@ class ReviewsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
             ],
-            BookingCard(
-              color: StayEasyColors.surfaceVariant,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'StayEasy AI · Guest sentiment',
-                    style: StayEasyTypography.titleMedium.copyWith(
-                      color: StayEasyColors.aiAccent,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Guests frequently praise the thoughtful service, comfortable beds and convenient neighbourhood. October visitors especially appreciate how easy it is to explore nearby Colaba.',
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'AI summary of review themes · Ranking is deterministic',
-                    style: StayEasyTypography.caption,
-                  ),
-                ],
-              ),
-            ),
+            const _ReviewAiCard(),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: booking.datesValid
@@ -213,6 +193,120 @@ class ReviewsPage extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ReviewAiCard extends ConsumerWidget {
+  const _ReviewAiCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final contextState = ref.watch(reviewAiContextProvider);
+    Widget fallback({required bool loading}) => BookingCard(
+      color: StayEasyColors.surfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            loading ? 'Preparing stay insights' : 'AI summary unavailable',
+            style: StayEasyTypography.titleMedium.copyWith(
+              color: StayEasyColors.aiAccent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            loading
+                ? 'Checking verified reviews relevant to your stay.'
+                : 'Your reviews are still ranked by stay relevance.',
+            style: StayEasyTypography.bodySmall,
+          ),
+        ],
+      ),
+    );
+
+    if (contextState.isLoading) return fallback(loading: true);
+    final aiContext = contextState.value;
+    if (contextState.hasError || aiContext == null) {
+      return fallback(loading: false);
+    }
+    final state = ref.watch(reviewAiInsightProvider(aiContext));
+    if (state.isLoading) return fallback(loading: true);
+    if (state.hasError || state.value == null) {
+      return fallback(loading: false);
+    }
+    final insight = state.value!;
+    if (insight.status == ReviewAiStatus.insufficientEvidence) {
+      return BookingCard(
+        color: StayEasyColors.surfaceVariant,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              insight.title,
+              style: StayEasyTypography.titleMedium.copyWith(
+                color: StayEasyColors.aiAccent,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Not enough relevant verified reviews for an AI summary yet.',
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Your ranked reviews remain available below.',
+              style: StayEasyTypography.caption,
+            ),
+          ],
+        ),
+      );
+    }
+    return BookingCard(
+      color: StayEasyColors.surfaceVariant,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            insight.title,
+            style: StayEasyTypography.titleMedium.copyWith(
+              color: StayEasyColors.aiAccent,
+            ),
+          ),
+          const SizedBox(height: 8),
+          for (final bullet in insight.bullets)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('•  '),
+                  Expanded(
+                    child: Text(
+                      bullet.text,
+                      style: StayEasyTypography.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (insight.caution != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Mixed feedback: ${insight.caution!.text}',
+              style: StayEasyTypography.bodySmall,
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(
+            'Generated from verified reviews relevant to your stay.',
+            style: StayEasyTypography.caption,
+          ),
+          Text(
+            'Based on ${insight.sourceCount} relevant verified reviews.',
+            style: StayEasyTypography.caption,
+          ),
+        ],
       ),
     );
   }

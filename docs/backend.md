@@ -41,3 +41,6 @@ Never expose service-role/secret credentials in Flutter. Flutter uses only the p
 ## Demo seed
 
 Run `supabase/seed.sql` after migrations (for example `supabase db reset` in a local linked environment, or execute it in the Supabase SQL editor for the remote demo project). It uses stable UUIDs and upserts 4 hotels, 12 rooms, October 2026 availability including sold-out dates, and 16 null-user demo reviews. Reviews span October, nearby months/seasons, older stays, hotel/room levels, verification states, and helpfulness values for deterministic ranking tests.
+# StayEasy AI endpoints
+
+See [AI architecture, grounding, and deployment](ai.md). AI is strictly downstream of search/review data: it parses search intent or summarizes verified review evidence, while the deterministic Dart review ranker remains authoritative.

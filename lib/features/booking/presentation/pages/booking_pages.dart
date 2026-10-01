@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_routes.dart';
+import '../../../../core/backend/supabase_providers.dart';
 import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
@@ -14,8 +15,8 @@ class BookingGuestPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(bookingProvider);
-    final hotel = bookingHotel(state);
-    final room = bookingRoom(state);
+    final hotel = ref.watch(currentBookingHotelProvider).value;
+    final room = ref.watch(currentBookingRoomProvider).value;
     return Scaffold(
       appBar: AppBar(title: const Text('Guest details'), centerTitle: true),
       body: BookingContent(
@@ -154,8 +155,8 @@ class BookingSummaryPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(bookingProvider);
-    final hotel = bookingHotel(state);
-    final room = bookingRoom(state);
+    final hotel = ref.watch(currentBookingHotelProvider).value;
+    final room = ref.watch(currentBookingRoomProvider).value;
     return Scaffold(
       appBar: AppBar(title: const Text('Review booking'), centerTitle: true),
       body: BookingContent(
@@ -247,8 +248,25 @@ class BookingConfirmationPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(bookingProvider);
-    final hotel = bookingHotel(state);
-    final room = bookingRoom(state);
+    final backendEnabled = ref.watch(backendEnabledProvider);
+    final authState = ref.watch(authProfileProvider);
+    if (backendEnabled && authState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (backendEnabled && authState.value == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(
+            '${AppRoutes.signIn}?next=${Uri.encodeComponent(AppRoutes.bookingConfirmation)}',
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(child: Text('Sign in to confirm your stay.')),
+      );
+    }
+    final hotel = ref.watch(currentBookingHotelProvider).value;
+    final room = ref.watch(currentBookingRoomProvider).value;
     return Scaffold(
       appBar: AppBar(title: const Text('Review booking'), centerTitle: true),
       body: BookingContent(
@@ -278,11 +296,29 @@ class BookingConfirmationPage extends ConsumerWidget {
                     const SizedBox(width: 12),
                     Expanded(
                       child: FilledButton(
-                        onPressed: () {
-                          ref.read(bookingProvider.notifier).confirm();
-                          context.go(AppRoutes.bookingSuccess);
-                        },
-                        child: const Text('Confirm'),
+                        onPressed: state.isSubmitting
+                            ? null
+                            : () async {
+                                await ref
+                                    .read(bookingProvider.notifier)
+                                    .createBooking();
+                                final updated = ref.read(bookingProvider);
+                                if (updated.confirmed && context.mounted) {
+                                  context.go(AppRoutes.bookingSuccess);
+                                } else if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        updated.error ??
+                                            'Booking could not be confirmed.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                        child: Text(
+                          state.isSubmitting ? 'Confirming…' : 'Confirm',
+                        ),
                       ),
                     ),
                   ],
@@ -301,8 +337,8 @@ class BookingSuccessPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(bookingProvider);
-    final hotel = bookingHotel(state);
-    final room = bookingRoom(state);
+    final hotel = ref.watch(currentBookingHotelProvider).value;
+    final room = ref.watch(currentBookingRoomProvider).value;
     return Scaffold(
       body: BookingContent(
         child: ListView(
@@ -371,13 +407,62 @@ class BookingSuccessPage extends ConsumerWidget {
   }
 }
 
-class MyTripsPage extends ConsumerWidget {
+class MyTripsPage extends ConsumerStatefulWidget {
   const MyTripsPage({super.key});
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyTripsPage> createState() => _MyTripsPageState();
+}
+
+class _MyTripsPageState extends ConsumerState<MyTripsPage> {
+  String _filter = 'Upcoming';
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
+    final backendEnabled = ref.watch(backendEnabledProvider);
+    final authState = ref.watch(authProfileProvider);
+    if (backendEnabled && authState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (backendEnabled && authState.value == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          context.go(
+            '${AppRoutes.signIn}?next=${Uri.encodeComponent(AppRoutes.trips)}',
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(child: Text('Sign in to view your trips.')),
+      );
+    }
+    final tripsState = ref.watch(myBookingsProvider);
+    if (tripsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (tripsState.hasError) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Could not load your trips. Please try again.'),
+        ),
+      );
+    }
+    final allTrips = tripsState.value ?? const [];
+    final now = DateTime.now();
+    final trips = allTrips
+        .where(
+          (trip) => switch (_filter) {
+            'Upcoming' =>
+              trip.status == 'confirmed' && trip.checkOut.isAfter(now),
+            'Past' => trip.status == 'confirmed' && !trip.checkOut.isAfter(now),
+            'Cancelled' => trip.status == 'cancelled',
+            _ => true,
+          },
+        )
+        .toList();
     final state = ref.watch(bookingProvider);
-    final hotel = bookingHotel(state);
-    final room = bookingRoom(state);
+    final hotel = ref.watch(currentBookingHotelProvider).value;
+    final room = ref.watch(currentBookingRoomProvider).value;
     return Scaffold(
       appBar: AppBar(title: const Text('My trips'), centerTitle: true),
       body: BookingContent(
@@ -395,22 +480,71 @@ class MyTripsPage extends ConsumerWidget {
               style: StayEasyTypography.editorialHero.copyWith(fontSize: 30),
             ),
             const SizedBox(height: 12),
-            const Row(
+            Wrap(
+              spacing: 8,
               children: [
-                Expanded(
-                  child: Chip(label: Center(child: Text('Upcoming'))),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Chip(label: Center(child: Text('Past'))),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Chip(label: Center(child: Text('Cancelled'))),
-                ),
+                for (final value in const ['Upcoming', 'Past', 'Cancelled'])
+                  ChoiceChip(
+                    label: Text(value),
+                    selected: _filter == value,
+                    onSelected: (_) => setState(() => _filter = value),
+                  ),
               ],
             ),
-            if (state.confirmed && hotel != null && room != null)
+            if (backendEnabled && trips.isNotEmpty)
+              for (final trip in trips)
+                BookingCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${trip.status.toUpperCase()} · ${trip.checkIn.day} ${_monthName(trip.checkIn.month)}',
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        trip.hotelName,
+                        style: StayEasyTypography.editorialHero.copyWith(
+                          fontSize: 22,
+                        ),
+                      ),
+                      Text(trip.roomName),
+                      Text(
+                        '${trip.checkIn.day}–${trip.checkOut.day} ${_monthName(trip.checkOut.month)} · ${trip.checkOut.difference(trip.checkIn).inDays} nights · ${trip.guests} guests',
+                      ),
+                      Text('Booking ${trip.code}'),
+                      Text('₹${trip.total.toStringAsFixed(0)}'),
+                      if (trip.status == 'confirmed' &&
+                          trip.checkOut.isAfter(DateTime.now()))
+                        OutlinedButton(
+                          onPressed: () async {
+                            try {
+                              await ref
+                                  .read(bookingRepositoryProvider)
+                                  .cancel(trip.id);
+                              ref.invalidate(myBookingsProvider);
+                              ref.invalidate(availabilityProvider(trip.roomId));
+                            } catch (_) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'We couldn’t cancel this booking. Please try again.',
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: const Text('Cancel booking'),
+                        ),
+                    ],
+                  ),
+                )
+            else if (!backendEnabled &&
+                _filter == 'Upcoming' &&
+                state.confirmed &&
+                hotel != null &&
+                room != null)
               BookingCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -456,7 +590,13 @@ class MyTripsPage extends ConsumerWidget {
                 ),
               )
             else
-              const BookingCard(child: Text('No upcoming stays yet.')),
+              BookingCard(
+                child: Text(
+                  _filter == 'Upcoming'
+                      ? 'No upcoming stays yet.'
+                      : 'No ${_filter.toLowerCase()} stays yet.',
+                ),
+              ),
             const SizedBox(height: 16),
             const BookingCard(
               child: Column(
@@ -493,3 +633,18 @@ String _dates(BookingState state) =>
     state.checkIn == null || state.checkOut == null
     ? '18–22 Oct'
     : '${state.checkIn!.day}–${state.checkOut!.day} Oct';
+
+String _monthName(int month) => const [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+][month - 1];

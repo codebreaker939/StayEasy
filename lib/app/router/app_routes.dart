@@ -21,6 +21,14 @@ abstract final class AppRoutes {
   static const bookingSuccessName = 'booking-success';
   static const trips = '/trips';
   static const tripsName = 'trips';
+  static const signIn = '/sign-in';
+  static const signUp = '/sign-up';
+  static const admin = '/admin';
+  static const adminHotels = '/admin/hotels';
+  static const adminRooms = '/admin/rooms';
+  static const adminAvailability = '/admin/availability';
+  static const adminBookings = '/admin/bookings';
+  static const adminReviews = '/admin/reviews';
 
   static String hotelPath(String id) => '/hotel/$id';
   static String roomPath(String id) => '/room/$id';

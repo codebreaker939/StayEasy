@@ -18,11 +18,17 @@ erDiagram
 
 RLS is enabled on all six public tables. Anonymous visitors can read active hotels/rooms, availability, and reviews. Signed-in users can read and safely edit only their own profile, read only their own bookings, and create only unverified reviews under their own identity. They cannot directly create bookings or set booking totals/status.
 
-Admins are determined only by `public.profiles.role = 'admin'` through the `public.is_admin()` security-definer helper; no email or client-controlled flag grants authority. The `profiles_role_allowed` constraint permits only `user` and `admin`. New Auth users get a `user` profile via `auth.users` trigger. To bootstrap the first administrator, create and verify the account normally, then run once in the Supabase SQL editor as a trusted database administrator:
+Admins are determined only by `public.profiles.role = 'admin'` through the `public.is_admin()` security-definer helper; no email or client-controlled flag grants authority. The `profiles_role_allowed` constraint permits only `user` and `admin`. New Auth users get a `user` profile via `auth.users` trigger. To bootstrap the first administrator:
+
+1. Sign up normally through StayEasy and complete email verification.
+2. In trusted Supabase dashboard/admin tooling, identify the account's `public.profiles.id` and email.
+3. As a trusted database administrator, promote only that profile manually:
 
 ```sql
 update public.profiles set role = 'admin' where id = '<auth-user-uuid>';
 ```
+
+4. Sign out and sign back in (or refresh the profile session). `/admin` then becomes available. The normal Flutter app has no promotion control.
 
 Never expose service-role/secret credentials in Flutter. Flutter uses only the publishable client key; privileged operations belong in controlled database functions or backend services.
 

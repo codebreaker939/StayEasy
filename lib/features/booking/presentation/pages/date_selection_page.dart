@@ -9,6 +9,8 @@ import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../application/booking_provider.dart';
+import '../../domain/booking_repository.dart';
+import '../../../discovery/domain/models/room.dart';
 import '../widgets/booking_widgets.dart';
 
 class DateSelectionPage extends ConsumerStatefulWidget {
@@ -35,10 +37,34 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
-    final room = findRoom(ref, widget.roomId);
+    final roomState = ref.watch(roomFutureProvider(widget.roomId));
+    final availabilityState = ref.watch(availabilityProvider(widget.roomId));
     final booking = ref.watch(bookingProvider);
+    if (roomState.isLoading || availabilityState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (roomState.hasError || availabilityState.hasError) {
+      return const Scaffold(
+        body: Center(child: Text('Could not load dates. Please try again.')),
+      );
+    }
+    final availability =
+        availabilityState.value ?? const <DateTime, AvailabilityDay>{};
+    final room = roomState.value;
     if (room == null) {
       return const Scaffold(body: Center(child: Text('Room not found')));
+    }
+    if (booking.estimatedPrice == null &&
+        booking.checkIn != null &&
+        booking.checkOut != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _updateEstimate(
+          room,
+          availability,
+          booking.checkIn!,
+          booking.checkOut!,
+        ),
+      );
     }
     final month = DateTime(2026, 10);
     final offset = (month.weekday + 6) % 7;
@@ -47,7 +73,7 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
         first != null &&
         last != null &&
         last!.isAfter(first!) &&
-        !unavailableStayNights(first!, last!);
+        _stayHasAvailability(availability, first!, last!);
     return Scaffold(
       appBar: AppBar(title: const Text('Select your stay'), centerTitle: true),
       body: BookingContent(
@@ -142,7 +168,13 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
                       final day = index - offset + 1;
                       if (day < 1 || day > 31) return const SizedBox();
                       final date = DateTime(2026, 10, day);
-                      final unavailable = unavailableOctoberDays.contains(day);
+                      final isCheckoutCandidate =
+                          first != null && last == null && date.isAfter(first!);
+                      final dayAvailability = availability[date];
+                      final unavailable =
+                          dayAvailability == null ||
+                          (!isCheckoutCandidate &&
+                              dayAvailability.availableRooms <= 0);
                       final selected =
                           (first != null && _same(date, first!)) ||
                           (last != null && _same(date, last!));
@@ -205,7 +237,7 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
                   Text('Price estimate', style: StayEasyTypography.titleMedium),
                   const SizedBox(height: 10),
                   PriceLine(
-                    '${booking.nights} nights × ₹${room.pricePerNight}',
+                    '${booking.nights} nights · from ₹${room.pricePerNight}',
                     booking.subtotal,
                   ),
                   PriceLine('Taxes & fees', booking.taxes),
@@ -249,7 +281,10 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
       });
       return;
     }
-    if (unavailableStayNights(first!, date)) {
+    final availability =
+        ref.read(availabilityProvider(widget.roomId)).value ??
+        const <DateTime, AvailabilityDay>{};
+    if (!_stayHasAvailability(availability, first!, date)) {
       setState(
         () => error =
             'One or more nights are unavailable. Try a different date range.',
@@ -257,7 +292,31 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
       return;
     }
     setState(() => last = date);
-    ref.read(bookingProvider.notifier).chooseDates(first!, date);
+    final accepted = ref
+        .read(bookingProvider.notifier)
+        .chooseDates(first!, date);
+    final room = ref.read(roomFutureProvider(widget.roomId)).value;
+    if (accepted && room != null) {
+      _updateEstimate(room, availability, first!, date);
+    }
+  }
+
+  void _updateEstimate(
+    Room room,
+    Map<DateTime, AvailabilityDay> availability,
+    DateTime from,
+    DateTime to,
+  ) {
+    var subtotal = 0.0;
+    for (
+      var night = DateTime(from.year, from.month, from.day);
+      night.isBefore(to);
+      night = night.add(const Duration(days: 1))
+    ) {
+      subtotal +=
+          availability[night]?.priceOverride ?? room.pricePerNight.toDouble();
+    }
+    ref.read(bookingProvider.notifier).setEstimate(subtotal);
   }
 
   Widget _dateLabel(String label, DateTime? date) => Column(
@@ -276,6 +335,23 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
   String _short(DateTime? d) => d == null ? 'Select' : '${d.day} Oct';
   bool _same(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+bool _stayHasAvailability(
+  Map<DateTime, AvailabilityDay> availability,
+  DateTime checkIn,
+  DateTime checkOut,
+) {
+  if (!checkOut.isAfter(checkIn)) return false;
+  for (
+    var night = DateTime(checkIn.year, checkIn.month, checkIn.day);
+    night.isBefore(checkOut);
+    night = night.add(const Duration(days: 1))
+  ) {
+    final day = availability[night];
+    if (day == null || day.availableRooms <= 0) return false;
+  }
+  return true;
 }
 
 class LegendDot extends StatelessWidget {

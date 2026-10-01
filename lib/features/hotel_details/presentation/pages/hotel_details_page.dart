@@ -23,7 +23,18 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final hotel = findHotel(ref, widget.hotelId);
+    final hotelState = ref.watch(hotelFutureProvider(widget.hotelId));
+    if (hotelState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (hotelState.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Text('Could not load this stay. ${hotelState.error}'),
+        ),
+      );
+    }
+    final hotel = hotelState.value;
     if (hotel == null) {
       return Scaffold(
         appBar: AppBar(),
@@ -31,10 +42,16 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
       );
     }
     final saved = ref.watch(savedHotelIdsProvider).contains(hotel.id);
-    final rooms = ref
-        .watch(roomsProvider)
-        .where((room) => room.hotelId == hotel.id)
-        .toList();
+    final roomsState = ref.watch(roomsForHotelFutureProvider(hotel.id));
+    if (roomsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (roomsState.hasError) {
+      return Scaffold(
+        body: Center(child: Text('Could not load rooms. ${roomsState.error}')),
+      );
+    }
+    final rooms = roomsState.value ?? const [];
     return Scaffold(
       body: CustomScrollView(
         slivers: [

@@ -18,6 +18,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
     expect(find.text('StayEasy'), findsOneWidget);
     expect(find.text('Where are you\nstaying next?'), findsOneWidget);
     expect(find.text('Search stays'), findsOneWidget);
@@ -27,6 +28,7 @@ void main() {
 
   testWidgets('Search CTA opens filtered results', (tester) async {
     await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Search stays'));
     await tester.tap(find.text('Search stays'));
     await tester.pumpAndSettle();
@@ -36,6 +38,7 @@ void main() {
 
   testWidgets('hotel selection opens Hotel Details by ID', (tester) async {
     await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Search stays'));
     await tester.tap(find.text('Search stays'));
     await tester.pumpAndSettle();
@@ -50,6 +53,7 @@ void main() {
 
   testWidgets('room selection opens Room Details by ID', (tester) async {
     await tester.pumpWidget(buildApp());
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Search stays'));
     await tester.tap(find.text('Search stays'));
     await tester.pumpAndSettle();

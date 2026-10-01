@@ -1,5 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/backend/supabase_providers.dart';
+import '../data/hotel_repositories.dart';
+import '../domain/hotel_repository.dart';
 import '../data/mock_stay_data.dart';
 import '../domain/models/hotel.dart';
 import '../domain/models/room.dart';
@@ -48,6 +51,24 @@ final searchStateProvider = NotifierProvider<SearchStateNotifier, SearchState>(
 );
 final hotelsProvider = Provider<List<Hotel>>((ref) => MockStayData.hotels);
 final roomsProvider = Provider<List<Room>>((ref) => MockStayData.rooms);
+final hotelRepositoryProvider = Provider<HotelRepository>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? MockHotelRepository()
+      : SupabaseHotelRepository(client);
+});
+final hotelsFutureProvider = FutureProvider<List<Hotel>>(
+  (ref) => ref.watch(hotelRepositoryProvider).getHotels(),
+);
+final hotelFutureProvider = FutureProvider.family<Hotel?, String>(
+  (ref, id) => ref.watch(hotelRepositoryProvider).getHotel(id),
+);
+final roomsForHotelFutureProvider = FutureProvider.family<List<Room>, String>(
+  (ref, id) => ref.watch(hotelRepositoryProvider).getRooms(hotelId: id),
+);
+final roomFutureProvider = FutureProvider.family<Room?, String>(
+  (ref, id) => ref.watch(hotelRepositoryProvider).getRoom(id),
+);
 final savedHotelIdsProvider =
     NotifierProvider<SavedHotelIdsNotifier, Set<String>>(
       SavedHotelIdsNotifier.new,
@@ -96,6 +117,15 @@ final searchResultsProvider = Provider<List<Hotel>>((ref) {
     search.destination,
     search.sort,
   );
+});
+final searchResultsFutureProvider = Provider<AsyncValue<List<Hotel>>>((ref) {
+  final search = ref.watch(searchStateProvider);
+  return ref
+      .watch(hotelsFutureProvider)
+      .whenData(
+        (hotels) =>
+            filterAndSortHotels(hotels, search.destination, search.sort),
+      );
 });
 
 Hotel? findHotel(WidgetRef ref, String id) {

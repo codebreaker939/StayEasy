@@ -15,7 +15,18 @@ class SearchResultsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final search = ref.watch(searchStateProvider);
-    final results = ref.watch(searchResultsProvider);
+    final resultsState = ref.watch(searchResultsFutureProvider);
+    if (resultsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (resultsState.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Text('Could not load search results. ${resultsState.error}'),
+        ),
+      );
+    }
+    final results = resultsState.value ?? const [];
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(

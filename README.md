@@ -1,6 +1,20 @@
 # stayeasy
 
-A new Flutter project.
+StayEasy is a Flutter hotel discovery and booking prototype backed by Supabase.
+
+## Local development
+
+Copy `config/dev.example.json` to the ignored local file `config/dev.json` and
+fill in the project URL and publishable key from the Supabase project. Run the
+app with `flutter run --dart-define-from-file=config/dev.json`. The publishable
+key is intended for client applications; never put a Supabase secret/service
+role key or database password in this file or in Flutter code.
+
+When the Supabase defines are omitted, development widgets use mock repository
+implementations. Tests use those defaults or explicit repository overrides and
+do not need live network access.
+
+Run the checks with `dart format .`, `flutter analyze`, and `flutter test`.
 
 ## Getting Started
 

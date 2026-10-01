@@ -14,7 +14,16 @@ class ReviewsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final booking = ref.watch(bookingProvider);
-    final reviews = ref.watch(rankedReviewsProvider);
+    final reviewsState = ref.watch(rankedReviewsProvider);
+    if (reviewsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (reviewsState.hasError) {
+      return const Scaffold(
+        body: Center(child: Text('Reviews are unavailable right now.')),
+      );
+    }
+    final reviews = reviewsState.value ?? const [];
     final sameMonth = reviews.any(
       (r) => r.review.stayedOn.month == (booking.checkIn?.month ?? 10),
     );
@@ -76,6 +85,8 @@ class ReviewsPage extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 12),
+            if (reviews.isEmpty)
+              const BookingCard(child: Text('No reviews yet for this stay.')),
             for (final ranked in reviews) ...[
               BookingCard(
                 child: Column(
@@ -95,7 +106,7 @@ class ReviewsPage extends ConsumerWidget {
                             ? 'Relevant to your selected room'
                             : ranked.review.stayedOn.month ==
                                   (booking.checkIn?.month ?? 10)
-                            ? 'Relevant to your October stay'
+                            ? 'Relevant to your ${_month(booking.checkIn?.month ?? 10)} stay'
                             : 'Nearby-season review',
                         style: StayEasyTypography.labelMedium.copyWith(
                           color: StayEasyColors.primary,

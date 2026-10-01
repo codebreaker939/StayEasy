@@ -7,6 +7,8 @@ import '../../features/search/presentation/pages/search_results_page.dart';
 import '../../features/booking/presentation/pages/date_selection_page.dart';
 import '../../features/booking/presentation/pages/reviews_page.dart';
 import '../../features/booking/presentation/pages/booking_pages.dart';
+import '../../features/auth/presentation/auth_page.dart';
+import '../../features/admin/presentation/admin_pages.dart';
 import 'app_routes.dart';
 
 GoRouter createAppRouter({String initialLocation = AppRoutes.explore}) =>
@@ -70,6 +72,48 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.explore}) =>
           path: AppRoutes.trips,
           name: AppRoutes.tripsName,
           builder: (context, state) => const MyTripsPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.signIn,
+          builder: (context, state) => AuthPage(
+            next: state.uri.queryParameters['next'] ?? AppRoutes.explore,
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.signUp,
+          builder: (context, state) => AuthPage(
+            signUp: true,
+            next: state.uri.queryParameters['next'] ?? AppRoutes.explore,
+          ),
+        ),
+        GoRoute(
+          path: AppRoutes.admin,
+          builder: (context, state) => const AdminDashboardPage(),
+        ),
+        GoRoute(
+          path: AppRoutes.adminHotels,
+          builder: (context, state) =>
+              const AdminDataPage(section: AdminSection.hotels),
+        ),
+        GoRoute(
+          path: AppRoutes.adminRooms,
+          builder: (context, state) =>
+              const AdminDataPage(section: AdminSection.rooms),
+        ),
+        GoRoute(
+          path: AppRoutes.adminAvailability,
+          builder: (context, state) =>
+              const AdminDataPage(section: AdminSection.availability),
+        ),
+        GoRoute(
+          path: AppRoutes.adminBookings,
+          builder: (context, state) =>
+              const AdminDataPage(section: AdminSection.bookings),
+        ),
+        GoRoute(
+          path: AppRoutes.adminReviews,
+          builder: (context, state) =>
+              const AdminDataPage(section: AdminSection.reviews),
         ),
       ],
     );

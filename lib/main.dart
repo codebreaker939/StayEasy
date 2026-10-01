@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/stayeasy_app.dart';
+import 'core/backend/supabase_providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -12,12 +13,23 @@ Future<void> main() async {
     'SUPABASE_PUBLISHABLE_KEY',
   );
 
-  if (supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty) {
+  final configured =
+      supabaseUrl.isNotEmpty && supabasePublishableKey.isNotEmpty;
+  if (configured) {
     await Supabase.initialize(
       url: supabaseUrl,
       publishableKey: supabasePublishableKey,
     );
   }
 
-  runApp(const ProviderScope(child: StayEasyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        supabaseClientProvider.overrideWithValue(
+          configured ? Supabase.instance.client : null,
+        ),
+      ],
+      child: const StayEasyApp(),
+    ),
+  );
 }

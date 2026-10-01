@@ -9,8 +9,8 @@ import '../../../../core/theme/stayeasy_elevation.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../booking/application/booking_provider.dart';
 import '../../../discovery/application/discovery_providers.dart';
-import '../../../discovery/data/mock_stay_data.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
 
 class ExplorePage extends ConsumerWidget {
@@ -19,10 +19,21 @@ class ExplorePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final search = ref.watch(searchStateProvider);
+    final hotelsState = ref.watch(hotelsFutureProvider);
+    final profile = ref.watch(authProfileProvider).value;
+    if (hotelsState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (hotelsState.hasError) {
+      return Scaffold(
+        body: Center(child: Text('Could not load stays. ${hotelsState.error}')),
+      );
+    }
+    final hotels = hotelsState.value ?? const [];
     final width = MediaQuery.sizeOf(context).width;
     final expanded =
         StayEasyBreakpoints.classify(width) == StayEasyLayoutSize.expanded;
-    final featured = MockStayData.hotels.take(2).toList();
+    final featured = hotels.take(2).toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -30,12 +41,39 @@ class ExplorePage extends ConsumerWidget {
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
         actions: [
-          IconButton(
+          PopupMenuButton<String>(
             tooltip: 'Profile',
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile is coming soon.')),
-            ),
             icon: const Icon(Icons.account_circle_outlined),
+            onSelected: (action) async {
+              switch (action) {
+                case 'sign-in':
+                  context.push(AppRoutes.signIn);
+                case 'trips':
+                  context.push(AppRoutes.trips);
+                case 'admin':
+                  context.push(AppRoutes.admin);
+                case 'sign-out':
+                  await ref.read(authRepositoryProvider).signOut();
+                  ref.invalidate(authProfileProvider);
+                  if (context.mounted) context.go(AppRoutes.explore);
+              }
+            },
+            itemBuilder: (context) => [
+              if (profile == null)
+                const PopupMenuItem(value: 'sign-in', child: Text('Sign in')),
+              if (profile != null) ...[
+                PopupMenuItem(
+                  value: 'trips',
+                  child: Text('My trips · ${profile.email}'),
+                ),
+                if (profile.isAdmin)
+                  const PopupMenuItem(
+                    value: 'admin',
+                    child: Text('Admin workspace'),
+                  ),
+                const PopupMenuItem(value: 'sign-out', child: Text('Sign out')),
+              ],
+            ],
           ),
         ],
       ),
@@ -146,7 +184,7 @@ class ExplorePage extends ConsumerWidget {
               const SizedBox(height: 16),
               const SectionTitle('Popular stays'),
               const SizedBox(height: 12),
-              for (final hotel in MockStayData.hotels.skip(2)) ...[
+              for (final hotel in hotels.skip(2)) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: HotelCard(hotel: hotel, compact: true),

@@ -1,6 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/backend/supabase_providers.dart';
+import '../../auth/data/auth_repositories.dart';
+import '../../auth/domain/auth_repository.dart';
+import '../data/backend_repositories.dart';
+import '../data/review_repositories.dart';
+import '../domain/booking_repository.dart';
+import '../domain/review_repository.dart';
 import '../../discovery/data/mock_stay_data.dart';
+import '../../discovery/application/discovery_providers.dart';
 import '../../discovery/domain/models/hotel.dart';
 import '../../discovery/domain/models/room.dart';
 import '../domain/review.dart';
@@ -16,12 +24,22 @@ class BookingState {
     this.phone = '',
     this.specialRequest = '',
     this.confirmed = false,
+    this.bookingCode,
+    this.bookingDbId,
+    this.actualPrice,
+    this.estimatedPrice,
+    this.isSubmitting = false,
+    this.error,
   });
   final String? roomId;
   final DateTime? checkIn, checkOut;
   final int guests;
   final String guestName, email, phone, specialRequest;
   final bool confirmed;
+  final String? bookingCode, bookingDbId, error;
+  final BookingPrice? actualPrice;
+  final BookingPrice? estimatedPrice;
+  final bool isSubmitting;
   int get nights => checkIn == null || checkOut == null
       ? 0
       : checkOut!.difference(checkIn!).inDays;
@@ -39,11 +57,19 @@ class BookingState {
           .firstOrNull
           ?.pricePerNight ??
       0;
-  int get subtotal => nightlyPrice * nights;
-  int get taxes => (subtotal / 6).round();
-  int get discount => subtotal > 0 ? 500 : 0;
-  int get total => subtotal + taxes - discount;
-  String get bookingId {
+  int get subtotal =>
+      (actualPrice ?? estimatedPrice)?.subtotal.round() ??
+      nightlyPrice * nights;
+  int get taxes =>
+      (actualPrice ?? estimatedPrice)?.taxes.round() ?? (subtotal / 6).round();
+  int get discount =>
+      (actualPrice ?? estimatedPrice)?.discount.round() ??
+      (subtotal > 0 ? 500 : 0);
+  int get total =>
+      (actualPrice ?? estimatedPrice)?.total.round() ??
+      subtotal + taxes - discount;
+  String get bookingId => bookingCode ?? _draftBookingId;
+  String get _draftBookingId {
     final date = checkIn == null
         ? '261018'
         : '${checkIn!.year % 100}${checkIn!.month.toString().padLeft(2, '0')}${checkIn!.day.toString().padLeft(2, '0')}';
@@ -63,6 +89,12 @@ class BookingState {
     String? phone,
     String? specialRequest,
     bool? confirmed,
+    String? bookingCode,
+    String? bookingDbId,
+    BookingPrice? actualPrice,
+    BookingPrice? estimatedPrice,
+    bool? isSubmitting,
+    String? error,
     bool clearDates = false,
   }) => BookingState(
     roomId: roomId ?? this.roomId,
@@ -74,6 +106,12 @@ class BookingState {
     phone: phone ?? this.phone,
     specialRequest: specialRequest ?? this.specialRequest,
     confirmed: confirmed ?? this.confirmed,
+    bookingCode: bookingCode ?? this.bookingCode,
+    bookingDbId: bookingDbId ?? this.bookingDbId,
+    actualPrice: actualPrice ?? this.actualPrice,
+    estimatedPrice: estimatedPrice ?? this.estimatedPrice,
+    isSubmitting: isSubmitting ?? this.isSubmitting,
+    error: error,
   );
 }
 
@@ -116,68 +154,141 @@ class BookingNotifier extends Notifier<BookingState> {
     specialRequest: request,
   );
   void confirm() => state = state.copyWith(confirmed: true);
+  void setEstimate(double subtotal) {
+    final roundedSubtotal = double.parse(subtotal.toStringAsFixed(2));
+    final taxes = double.parse((roundedSubtotal / 6).toStringAsFixed(2));
+    final discount = roundedSubtotal > 0
+        ? (roundedSubtotal + taxes).clamp(0, 500).toDouble()
+        : 0.0;
+    state = state.copyWith(
+      estimatedPrice: BookingPrice(
+        subtotal: roundedSubtotal,
+        taxes: taxes,
+        discount: discount,
+        total: roundedSubtotal + taxes - discount,
+      ),
+    );
+  }
+
+  Future<void> createBooking() async {
+    if (!state.isValid || state.isSubmitting) return;
+    state = state.copyWith(isSubmitting: true, error: null);
+    try {
+      final result = await ref
+          .read(bookingRepositoryProvider)
+          .create(
+            roomId: state.roomId!,
+            checkIn: state.checkIn!,
+            checkOut: state.checkOut!,
+            guests: state.guests,
+            guestName: state.guestName,
+            guestEmail: state.email,
+            phone: state.phone.isEmpty ? null : state.phone,
+          );
+      state = state.copyWith(
+        bookingDbId: result.$1,
+        bookingCode: result.$2,
+        actualPrice: result.$3,
+        confirmed: true,
+        isSubmitting: false,
+      );
+      ref.invalidate(myBookingsProvider);
+      ref.invalidate(availabilityProvider(state.roomId!));
+    } catch (error) {
+      state = state.copyWith(isSubmitting: false, error: _bookingError(error));
+    }
+  }
+
+  String _bookingError(Object error) {
+    final message = error.toString().toLowerCase();
+    if (message.contains('sold out') || message.contains('availability')) {
+      return 'Those dates are no longer available. Please choose another stay.';
+    }
+    return 'We couldn’t confirm this booking. Please try again.';
+  }
 }
 
 final bookingProvider = NotifierProvider<BookingNotifier, BookingState>(
   BookingNotifier.new,
 );
 
-final reviewsProvider = Provider<List<Review>>(
-  (ref) => [
-    Review(
-      id: 'oct-2025',
-      guest: 'Rohan Mehta',
-      stayedOn: DateTime(2025, 10, 28),
-      rating: 4.8,
-      text: 'A comfortable stay with thoughtful service. The team made our October city break feel easy.',
-      roomId: 'mercer-deluxe',
-      roomName: 'Deluxe King — City View',
-      helpful: 42,
-      verified: true,
-    ),
-    Review(
-      id: 'room-jul-2026',
-      guest: 'Mira Iyer',
-      stayedOn: DateTime(2026, 7, 4),
-      rating: 4.8,
-      text: 'The room was quiet and the bed was genuinely comfortable. Loved having a proper desk too.',
-      roomId: 'mercer-deluxe',
-      roomName: 'Deluxe King — City View',
-      helpful: 42,
-      verified: true,
-    ),
-    Review(
-      id: 'winter-2025',
-      guest: 'Aarav Shah',
-      stayedOn: DateTime(2025, 12, 18),
-      rating: 4.6,
-      text: 'Warm service and a lovely breakfast made this a relaxing visit.',
-      roomId: 'mercer-premier',
-      roomName: 'Premier Balcony Room',
-      helpful: 18,
-      verified: true,
-    ),
-    Review(
-      id: 'spring-2024',
-      guest: 'Nisha Rao',
-      stayedOn: DateTime(2024, 3, 9),
-      rating: 4.5,
-      text: 'Comfortable and well located for exploring the neighbourhood.',
-      roomId: 'mercer-premier',
-      roomName: 'Premier Balcony Room',
-      helpful: 9,
-      verified: false,
-    ),
-  ],
-);
-final rankedReviewsProvider = Provider<List<RankedReview>>((ref) {
-  final booking = ref.watch(bookingProvider);
-  return rankReviews(
-    ref.watch(reviewsProvider),
-    booking.checkIn ?? DateTime(2026, 10, 18),
-    booking.roomId ?? '',
-  );
+final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? MockReviewRepository()
+      : SupabaseReviewRepository(client);
 });
+final reviewsProvider = FutureProvider<List<Review>>((ref) async {
+  final room = await ref.watch(currentBookingRoomProvider.future);
+  return ref.watch(reviewRepositoryProvider).getReviews(hotelId: room?.hotelId);
+});
+final rankedReviewsProvider = Provider<AsyncValue<List<RankedReview>>>((ref) {
+  final booking = ref.watch(bookingProvider);
+  return ref
+      .watch(reviewsProvider)
+      .whenData(
+        (reviews) => rankReviews(
+          reviews,
+          booking.checkIn ?? DateTime(2026, 10, 18),
+          booking.roomId ?? '',
+        ),
+      );
+});
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? GuestAuthRepository()
+      : SupabaseAuthRepository(client);
+});
+final profileRepositoryProvider = Provider<ProfileRepository?>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null ? null : SupabaseProfileRepository(client);
+});
+final authProfileProvider = StreamProvider<StayEasyProfile?>((ref) async* {
+  final repository = ref.watch(authRepositoryProvider);
+  yield await repository.currentProfile();
+  yield* repository.profileChanges;
+});
+final bookingRepositoryProvider = Provider<BookingRepository>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? MockBookingRepository()
+      : SupabaseBookingRepository(client);
+});
+final myBookingsProvider = FutureProvider<List<StayBooking>>((ref) {
+  if (ref.watch(authProfileProvider).value == null) return const [];
+  return ref.watch(bookingRepositoryProvider).getMyBookings();
+});
+final currentBookingRoomProvider = FutureProvider<Room?>((ref) async {
+  final id = ref.watch(bookingProvider).roomId;
+  return id == null ? null : ref.watch(hotelRepositoryProvider).getRoom(id);
+});
+final currentBookingHotelProvider = FutureProvider<Hotel?>((ref) async {
+  final room = await ref.watch(currentBookingRoomProvider.future);
+  return room == null
+      ? null
+      : ref.watch(hotelRepositoryProvider).getHotel(room.hotelId);
+});
+final availabilityRepositoryProvider = Provider<AvailabilityRepository>((ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return client == null
+      ? MockAvailabilityRepository()
+      : SupabaseAvailabilityRepository(client);
+});
+final availabilityProvider =
+    FutureProvider.family<Map<DateTime, AvailabilityDay>, String>((
+      ref,
+      roomId,
+    ) {
+      return ref
+          .watch(availabilityRepositoryProvider)
+          .getAvailability(
+            roomId,
+            DateTime(2026, 10, 1),
+            DateTime(2026, 11, 1),
+          );
+    });
 
 Room? bookingRoom(BookingState state) =>
     MockStayData.rooms.where((r) => r.id == state.roomId).firstOrNull;

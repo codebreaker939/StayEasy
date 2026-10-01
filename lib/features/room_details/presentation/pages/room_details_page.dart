@@ -17,14 +17,25 @@ class RoomDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final room = findRoom(ref, roomId);
+    final roomState = ref.watch(roomFutureProvider(roomId));
+    if (roomState.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (roomState.hasError) {
+      return Scaffold(
+        body: Center(
+          child: Text('Could not load this room. ${roomState.error}'),
+        ),
+      );
+    }
+    final room = roomState.value;
     if (room == null) {
       return Scaffold(
         appBar: AppBar(),
         body: const Center(child: Text('Room not found')),
       );
     }
-    final hotel = findHotel(ref, room.hotelId);
+    final hotel = ref.watch(hotelFutureProvider(room.hotelId)).value;
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(

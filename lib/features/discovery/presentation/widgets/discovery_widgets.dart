@@ -50,9 +50,13 @@ class StayEasyBottomNavigation extends StatelessWidget {
       ),
     ],
     onDestinationSelected: (index) {
-      if (index != 0) {
+      if (index == 1) {
+        context.go(AppRoutes.trips);
+      } else if (index == 3) {
+        context.go(AppRoutes.signIn);
+      } else if (index == 2) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This section is coming soon.')),
+          const SnackBar(content: Text('Saved stays are coming soon.')),
         );
       }
     },

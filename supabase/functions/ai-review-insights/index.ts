@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0';
-import { hasAuthenticatedUser } from '../_shared/auth.ts';
+import { hasValidPublishableApiKey } from '../_shared/auth.ts';
 import { corsHeaders, jsonResponse, preflight } from '../_shared/cors.ts';
 import { AiError, structuredResponse } from '../_shared/gemini.ts';
 import { INSIGHT_SCHEMA, monthContext, sanitizeInsights, selectReviewEvidence, runInsightIfEvidenceSufficient, type EvidenceReview } from '../_shared/review-insights.ts';
@@ -10,8 +10,8 @@ Deno.serve(async (request) => {
   const options = preflight(request);
   if (options) return options;
   if (request.method !== 'POST') return jsonResponse(request, { error: 'INVALID_REQUEST' }, 405);
-  if (!await hasAuthenticatedUser(request)) return jsonResponse(request, { error: 'AUTH_REQUIRED' }, 401);
   if (request.headers.has('origin') && !corsHeaders(request)['Access-Control-Allow-Origin']) return jsonResponse(request, { error: 'INVALID_REQUEST' }, 403);
+  if (!hasValidPublishableApiKey(request)) return jsonResponse(request, { error: 'INVALID_API_KEY' }, 401);
   try {
     const body = await request.json();
     if (typeof body.hotel_id !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.hotel_id)) throw new Error('INVALID_REQUEST');
@@ -19,9 +19,10 @@ Deno.serve(async (request) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const apiKey = request.headers.get('apikey');
     if (!supabaseUrl || !apiKey) return jsonResponse(request, { error: 'AI_UPSTREAM_ERROR' }, 503);
+    const authorization = request.headers.get('authorization');
     const supabase = createClient(supabaseUrl, apiKey, {
       auth: { persistSession: false, autoRefreshToken: false },
-      global: { headers: { Authorization: request.headers.get('Authorization') ?? '' } },
+      ...(authorization ? { global: { headers: { Authorization: authorization } } } : {}),
     });
     const { data: hotel, error: hotelError } = await supabase.from('hotels')
       .select('id').eq('id', body.hotel_id).eq('is_active', true).maybeSingle();

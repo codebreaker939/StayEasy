@@ -39,7 +39,9 @@ export function selectReviewEvidence(
     .map(({ review }) => ({
       id: review.id, rating: review.rating, stay_date: review.stay_date,
       created_at: review.created_at, room_id: review.room_id,
-      title: review.title?.slice(0, 120), body: review.body?.slice(0, 1200), helpful_count: review.helpful_count,
+      title: review.title == null ? null : review.title.slice(0, 120),
+      body: review.body == null ? null : review.body.slice(0, 1200),
+      helpful_count: review.helpful_count,
       is_verified: review.is_verified,
     }));
 }

@@ -1,5 +1,5 @@
 import { corsHeaders, jsonResponse, preflight } from '../_shared/cors.ts';
-import { hasAuthenticatedUser } from '../_shared/auth.ts';
+import { hasValidPublishableApiKey } from '../_shared/auth.ts';
 import { AiError, structuredResponse } from '../_shared/gemini.ts';
 import { CITIES, SEARCH_SCHEMA, sanitizeSearch, validateSearchInput } from '../_shared/search.ts';
 
@@ -9,11 +9,10 @@ Deno.serve(async (request) => {
   const options = preflight(request);
   if (options) return options;
   if (request.method !== 'POST') return jsonResponse(request, { error: 'INVALID_REQUEST' }, 405);
-  if (!await hasAuthenticatedUser(request)) return jsonResponse(request, { error: 'AUTH_REQUIRED' }, 401);
-  if (!request.headers.get('origin') || !corsHeaders(request)['Access-Control-Allow-Origin']) {
-    // Native Flutter requests have no Origin; browser requests must use an allow-listed origin.
-    if (request.headers.has('origin')) return jsonResponse(request, { error: 'INVALID_REQUEST' }, 403);
+  if (request.headers.has('origin') && !corsHeaders(request)['Access-Control-Allow-Origin']) {
+    return jsonResponse(request, { error: 'INVALID_REQUEST' }, 403);
   }
+  if (!hasValidPublishableApiKey(request)) return jsonResponse(request, { error: 'INVALID_API_KEY' }, 401);
   try {
     const body = await request.json();
     const query = validateSearchInput(body?.query);

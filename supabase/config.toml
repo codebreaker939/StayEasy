@@ -1,0 +1,5 @@
+[functions.ai-search]
+verify_jwt = false
+
+[functions.ai-review-insights]
+verify_jwt = false

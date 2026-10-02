@@ -1,15 +1,21 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.95.0';
+/** Check the public client key without requiring a signed-in Supabase user. */
+export function hasValidPublishableApiKey(request: Request): boolean {
+  const provided = request.headers.get("apikey");
+  const configured = Deno.env.get("SUPABASE_PUBLISHABLE_KEYS");
+  if (!provided || !provided.startsWith("sb_publishable_") || !configured) {
+    return false;
+  }
 
-export async function hasAuthenticatedUser(request: Request): Promise<boolean> {
   try {
-    const authorization = request.headers.get('authorization') ?? '';
-    const token = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
-    const url = Deno.env.get('SUPABASE_URL');
-    const apiKey = request.headers.get('apikey');
-    if (!token || !apiKey || !url) return false;
-    const client = createClient(url, apiKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data, error } = await client.auth.getUser(token);
-    return !error && data.user != null;
+    const parsed: unknown = JSON.parse(configured);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return false;
+    }
+    return Object.values(parsed).some(
+      (key) =>
+        typeof key === "string" && key.startsWith("sb_publishable_") &&
+        key === provided,
+    );
   } catch {
     return false;
   }

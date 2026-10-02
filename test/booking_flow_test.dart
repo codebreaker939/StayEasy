@@ -106,6 +106,93 @@ void main() {
     },
   );
 
+  test('My Trips resolves authenticated repository bookings', () async {
+    final repository = _TripsRepository(bookings: [_booking()]);
+    final container = ProviderContainer(
+      overrides: [
+        authProfileProvider.overrideWithValue(
+          const AsyncData(
+            StayEasyProfile(
+              id: 'customer-1',
+              email: 'customer@example.test',
+              role: 'user',
+            ),
+          ),
+        ),
+        bookingRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final bookings = await container.read(myBookingsProvider.future);
+
+    expect(bookings.single.code, 'SE-TEST-0001');
+    expect(container.read(myBookingsProvider).hasValue, isTrue);
+  });
+
+  test('My Trips exposes repository failures as AsyncError', () async {
+    final container = ProviderContainer(
+      overrides: [
+        authProfileProvider.overrideWithValue(
+          const AsyncData(
+            StayEasyProfile(
+              id: 'customer-1',
+              email: 'customer@example.test',
+              role: 'user',
+            ),
+          ),
+        ),
+        bookingRepositoryProvider.overrideWithValue(
+          _TripsRepository(error: StateError('booking query failed')),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(myBookingsProvider.future),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(
+      container.read(myBookingsProvider),
+      isA<AsyncError<List<StayBooking>>>(),
+    );
+  });
+
+  test('confirmed booking refreshes My Trips from the repository', () async {
+    final repository = _TripsRepository();
+    final container = ProviderContainer(
+      overrides: [
+        authProfileProvider.overrideWithValue(
+          const AsyncData(
+            StayEasyProfile(
+              id: 'customer-1',
+              email: 'customer@example.test',
+              role: 'user',
+            ),
+          ),
+        ),
+        bookingRepositoryProvider.overrideWithValue(repository),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(await container.read(myBookingsProvider.future), isEmpty);
+
+    final notifier = container.read(bookingProvider.notifier);
+    notifier.chooseRoom('room-1');
+    notifier.chooseDates(DateTime(2026, 10, 18), DateTime(2026, 10, 22));
+    notifier.setGuest(name: 'Customer', email: 'customer@example.test');
+    await notifier.createBooking();
+
+    expect(
+      (await container.read(myBookingsProvider.future)).single.code,
+      'SE-TEST-0001',
+    );
+    expect(repository.getMyBookingsCalls, 2);
+  });
+
   testWidgets('date to reviews to booking summary to success to My Trips', (
     tester,
   ) async {
@@ -260,3 +347,56 @@ class _PendingCancelRepository implements BookingRepository {
   @override
   Future<List<StayBooking>> getMyBookings() => Future.value(const []);
 }
+
+class _TripsRepository implements BookingRepository {
+  _TripsRepository({List<StayBooking>? bookings, this.error})
+    : _bookings = bookings ?? [];
+
+  final List<StayBooking> _bookings;
+  final Object? error;
+  int getMyBookingsCalls = 0;
+
+  @override
+  Future<void> cancel(String bookingId) async {}
+
+  @override
+  Future<(String id, String code, BookingPrice price)> create({
+    required String roomId,
+    required DateTime checkIn,
+    required DateTime checkOut,
+    required int guests,
+    required String guestName,
+    required String guestEmail,
+    String? phone,
+  }) async {
+    _bookings.add(_booking());
+    return (
+      'booking-1',
+      'SE-TEST-0001',
+      const BookingPrice(subtotal: 100, taxes: 10, discount: 0, total: 110),
+    );
+  }
+
+  @override
+  Future<List<StayBooking>> getMyBookings() async {
+    getMyBookingsCalls += 1;
+    if (error != null) throw error!;
+    return List.of(_bookings);
+  }
+}
+
+StayBooking _booking() => StayBooking(
+  id: 'booking-1',
+  code: 'SE-TEST-0001',
+  hotelId: 'hotel-1',
+  hotelName: 'Harbour House',
+  roomId: 'room-1',
+  roomName: 'Deluxe King',
+  checkIn: DateTime(2026, 10, 18),
+  checkOut: DateTime(2026, 10, 22),
+  guests: 2,
+  total: 110,
+  status: 'confirmed',
+  guestName: 'Customer',
+  guestEmail: 'customer@example.test',
+);

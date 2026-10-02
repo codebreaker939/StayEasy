@@ -581,7 +581,7 @@ class _VirtualTourPageState extends ConsumerState<VirtualTourPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'These are licensed sample photospheres resized for the StayEasy academic prototype, not photographs of this hotel.',
+                      'These are CC0 demo photospheres resized for the StayEasy academic prototype; they do not represent the seeded Harbour Queen property.',
                       style: StayEasyTypography.bodySmall.copyWith(
                         color: StayEasyColors.textSecondary,
                       ),

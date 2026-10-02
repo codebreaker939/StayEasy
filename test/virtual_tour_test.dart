@@ -223,11 +223,15 @@ void main() {
     await tester.tap(find.byTooltip('Tour information'));
     await tester.pumpAndSettle();
     expect(find.text('How to explore'), findsOneWidget);
-    expect(find.textContaining('NOIRLab/NSF/AURA/P. Horálek'), findsOneWidget);
-    expect(find.textContaining('Bart Everson'), findsOneWidget);
-    expect(find.textContaining('ESO/P. Horálek'), findsOneWidget);
+    expect(find.textContaining('Hotel Room'), findsOneWidget);
+    expect(find.textContaining('Greg Zaal, Poly Haven'), findsNWidgets(2));
+    expect(find.textContaining('En Suite'), findsOneWidget);
     expect(
-      find.textContaining('not photographs of this hotel'),
+      find.textContaining('Dimitrios Savva & Jarod Guest, Poly Haven'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('do not represent the seeded Harbour Queen property'),
       findsOneWidget,
     );
     _setViewport(tester, null);

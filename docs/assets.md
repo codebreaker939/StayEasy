@@ -2,10 +2,10 @@
 
 ## 360° demo panorama imagery
 
-These photospheres are demonstration imagery and are not photographs of the seeded StayEasy hotel. Each source was resized to 4096 × 2048 for the local academic prototype. The originals are not bundled.
+These photospheres are demo imagery for the StayEasy academic prototype and do not represent the seeded Harbour Queen property. Each source was proportionally resized to 4096 × 2048. The original 8K files are not bundled.
 
 | Asset | Attribution | License | Source |
 |---|---|---|---|
-| `assets/images/virtual_tour/bedroom_360.jpg` | NOIRLab/NSF/AURA/P. Horálek | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | [NOIRLab source](https://noirlab.edu/public/media/archives/images/large/2022_04_08_Pano360_Tololo_Hotel_Room-CC.jpg) |
-| `assets/images/virtual_tour/bathroom_360.jpg` | Bart Everson | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | [Flickr source](https://live.staticflickr.com/65535/50048674676_14f64469c8_o.jpg) |
-| `assets/images/virtual_tour/balcony_360.jpg` | ESO/P. Horálek | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) | [ESO source](https://cdn.eso.org/images/large/2018_04_23_ES_Supernova_VT_Roof-CC.jpg) |
+| `assets/images/virtual_tour/bedroom_360.jpg` (“Hotel Room”) | Greg Zaal, Poly Haven | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | [Poly Haven](https://polyhaven.com/a/hotel_room) |
+| `assets/images/virtual_tour/bathroom_360.jpg` (“En Suite”) | Greg Zaal, Poly Haven | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | [Poly Haven](https://polyhaven.com/a/en_suite) |
+| `assets/images/virtual_tour/balcony_360.jpg` (“Hotel Rooftop Balcony”) | Dimitrios Savva & Jarod Guest, Poly Haven | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) | [Poly Haven](https://polyhaven.com/a/hotel_rooftop_balcony) |

@@ -1,6 +1,8 @@
 import { sanitizeSearch, validateSearchInput } from './search.ts';
 import { sanitizeInsights, selectReviewEvidence, runInsightIfEvidenceSufficient, type EvidenceReview } from './review-insights.ts';
-import { structuredResponse, AiError, parseStructuredPayload } from './openai.ts';
+import { structuredResponse, AiError, parseStructuredPayload, toGeminiJsonSchema } from './gemini.ts';
+import { SEARCH_SCHEMA } from './search.ts';
+import { INSIGHT_SCHEMA } from './review-insights.ts';
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -68,6 +70,18 @@ Deno.test('clarification fields are parsed against canonical cities only', () =>
   assert(value.clarification?.options.join(',') === 'Mumbai', 'unsupported option retained');
 });
 
+Deno.test('Gemini schema conversion preserves nullable fields without unsupported anyOf', () => {
+  for (const schema of [SEARCH_SCHEMA, INSIGHT_SCHEMA]) {
+    const converted = toGeminiJsonSchema(schema) as Record<string, unknown>;
+    const serialized = JSON.stringify(converted);
+    assert(!serialized.includes('anyOf'), 'unsupported anyOf was not converted');
+  }
+  const search = toGeminiJsonSchema(SEARCH_SCHEMA) as Record<string, unknown>;
+  const properties = ((search.properties as Record<string, unknown>).filters as Record<string, unknown>).properties as Record<string, Record<string, unknown>>;
+  assert(JSON.stringify(properties.city.type) === '["string","null"]', 'nullable city type changed');
+  assert((properties.city.enum as unknown[]).includes(null), 'nullable city enum must retain null');
+});
+
 Deno.test('evidence selection mirrors ranker, excludes unverified and unrelated seasons', async () => {
   const fixture = JSON.parse(await Deno.readTextFile(new URL('./fixtures/review-ranking.json', import.meta.url)));
   const evidence = selectReviewEvidence(fixture.reviews as EvidenceReview[], fixture.month, fixture.year, fixture.room_id);
@@ -89,16 +103,24 @@ Deno.test('insight output rejects unknown source ids and accepts sourced claims'
   assertThrows(() => sanitizeInsights({ ...body, bullets: [{ text: 'Unsupported claim', source_review_ids: ['other'] }, body.bullets[1]] }, evidence), 'AI_INVALID_OUTPUT');
 });
 
-Deno.test('Responses API call is mocked, stateless, schema constrained and malformed output is rejected', async () => {
-  const captured: { body?: Record<string, unknown> } = {};
+Deno.test('Gemini generateContent request is mocked, schema constrained and malformed output is rejected', async () => {
+  const captured: { body?: Record<string, unknown>; url?: string; headers?: Headers } = {};
   const fetcher: typeof fetch = async (_input, init) => {
+    captured.url = String(_input);
+    captured.headers = new Headers(init?.headers);
     captured.body = JSON.parse(String(init?.body));
-    return new Response(JSON.stringify({ output: [{ content: [{ type: 'output_text', text: '{"ok":true}' }] }] }), { status: 200 });
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }), { status: 200 });
   };
-  const value = await structuredResponse('fixture', { type: 'object' }, 'instruction', 'input', { apiKey: 'test-only', fetcher });
+  const schema = { type: 'object', properties: { ok: { type: 'boolean' } } };
+  const value = await structuredResponse('fixture', schema, 'instruction', 'input', { apiKey: 'test-only', fetcher });
   assert(value.ok === true, 'mock structured output was not parsed');
-  assert(captured.body?.store === false && captured.body?.model === 'gpt-5.6-luna', 'stateless/default model parameters missing');
-  assertThrows(() => parseStructuredPayload({ output: [] }), 'AI_INVALID_OUTPUT');
+  assert(captured.url === 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent', 'default Gemini model endpoint missing');
+  assert(captured.headers?.get('x-goog-api-key') === 'test-only', 'Gemini API-key header missing');
+  assert(captured.body?.generationConfig && (captured.body.generationConfig as Record<string, unknown>).responseMimeType === 'application/json', 'JSON response mode missing');
+  assert(JSON.stringify((captured.body?.generationConfig as Record<string, unknown>).responseJsonSchema) === JSON.stringify(schema), 'JSON schema was not sent');
+  assertThrows(() => parseStructuredPayload({ candidates: [] }), 'AI_INVALID_OUTPUT');
+  assertThrows(() => parseStructuredPayload({ candidates: [{ finishReason: 'SAFETY' }] }), 'AI_INVALID_OUTPUT');
+  assertThrows(() => parseStructuredPayload({ candidates: [{ content: { parts: [{ text: 'not JSON' }] } }] }), 'AI_INVALID_OUTPUT');
   let failed = false;
   try {
     await structuredResponse('fixture', {}, 'instruction', 'input', {

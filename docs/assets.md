@@ -1,5 +1,9 @@
 # StayEasy image assets
 
+## Bundled fonts
+
+StayEasy bundles Manrope Regular, Medium, SemiBold, and Bold, plus DM Serif Display Regular. Their SIL Open Font Licenses are retained beside the font files in `assets/fonts/`.
+
 ## 360° demo panorama imagery
 
 These photospheres are demo imagery for the StayEasy academic prototype and do not represent the seeded Harbour Queen property. Each source was proportionally resized to 4096 × 2048. The original 8K files are not bundled.

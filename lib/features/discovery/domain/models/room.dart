@@ -11,6 +11,7 @@ class Room {
     required this.image,
     required this.amenities,
     this.available = true,
+    this.virtualTourUrl,
   });
 
   final String id;
@@ -24,4 +25,5 @@ class Room {
   final String image;
   final List<String> amenities;
   final bool available;
+  final String? virtualTourUrl;
 }

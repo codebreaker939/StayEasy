@@ -7,6 +7,8 @@ abstract final class AppRoutes {
   static const hotelName = 'hotel-details';
   static const room = '/room/:roomId';
   static const roomName = 'room-details';
+  static const virtualTour = '/room/:roomId/virtual-tour';
+  static const virtualTourName = 'room-virtual-tour';
   static const dates = '/room/:roomId/dates';
   static const datesName = 'date-selection';
   static const reviews = '/reviews';
@@ -32,5 +34,6 @@ abstract final class AppRoutes {
 
   static String hotelPath(String id) => '/hotel/$id';
   static String roomPath(String id) => '/room/$id';
+  static String virtualTourPath(String id) => '/room/$id/virtual-tour';
   static String datesPath(String id) => '/room/$id/dates';
 }

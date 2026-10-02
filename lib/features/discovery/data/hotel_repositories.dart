@@ -123,4 +123,5 @@ Room roomFromSupabaseRow(Map<String, dynamic> row) => Room(
   amenities: (row['amenities'] as List<dynamic>? ?? const [])
       .whereType<String>()
       .toList(),
+  virtualTourUrl: row['virtual_tour_url'] as String?,
 );

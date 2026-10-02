@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/explore/presentation/pages/explore_page.dart';
 import '../../features/hotel_details/presentation/pages/hotel_details_page.dart';
 import '../../features/room_details/presentation/pages/room_details_page.dart';
+import '../../features/virtual_tour/presentation/virtual_tour_page.dart';
 import '../../features/search/presentation/pages/search_results_page.dart';
 import '../../features/booking/presentation/pages/date_selection_page.dart';
 import '../../features/booking/presentation/pages/reviews_page.dart';
@@ -36,6 +37,12 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.explore}) =>
           name: AppRoutes.roomName,
           builder: (context, state) =>
               RoomDetailsPage(roomId: state.pathParameters['roomId']!),
+        ),
+        GoRoute(
+          path: AppRoutes.virtualTour,
+          name: AppRoutes.virtualTourName,
+          builder: (context, state) =>
+              VirtualTourPage(roomId: state.pathParameters['roomId']!),
         ),
         GoRoute(
           path: AppRoutes.dates,

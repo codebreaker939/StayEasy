@@ -13,6 +13,7 @@ import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
+import '../../../virtual_tour/application/virtual_tour_catalog.dart';
 
 class RoomDetailsPage extends ConsumerWidget {
   const RoomDetailsPage({super.key, required this.roomId});
@@ -38,6 +39,7 @@ class RoomDetailsPage extends ConsumerWidget {
         body: const Center(child: Text('Room not found')),
       );
     }
+    final virtualTour = VirtualTourCatalog.resolve(room);
     final hotel = ref.watch(hotelFutureProvider(room.hotelId)).value;
     return Scaffold(
       appBar: AppBar(
@@ -104,16 +106,15 @@ class RoomDetailsPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              OutlinedButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('360° preview coming in the next flow.'),
-                  ),
+              if (virtualTour != null) ...[
+                OutlinedButton.icon(
+                  onPressed: () =>
+                      context.push(AppRoutes.virtualTourPath(room.id)),
+                  icon: const Icon(Icons.threesixty_rounded),
+                  label: const Text('View 360° preview'),
                 ),
-                icon: const Icon(Icons.threesixty_rounded),
-                label: const Text('View 360° preview'),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
+              ],
               const SectionTitle('Room amenities'),
               const SizedBox(height: 12),
               Wrap(

@@ -37,6 +37,7 @@ dependencies:
   flutter_riverpod: ^3.4.3
   go_router: ^18.0.2
   supabase_flutter: ^2.18.0
+  panorama_viewer: ^2.0.7
 
 dev_dependencies:
   flutter_test:
@@ -62,6 +63,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/images/virtual_tour/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

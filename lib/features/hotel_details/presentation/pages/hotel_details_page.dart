@@ -7,6 +7,7 @@ import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
 import '../../../booking/application/booking_provider.dart';
@@ -31,8 +32,13 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     }
     if (hotelState.hasError) {
       return Scaffold(
-        body: Center(
-          child: Text('Could not load this stay. ${hotelState.error}'),
+        body: StayEasyStatusState(
+          title: 'Stay details are unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.hotel_outlined,
+          actionLabel: 'Retry',
+          isError: true,
+          onAction: () => ref.invalidate(hotelFutureProvider(widget.hotelId)),
         ),
       );
     }
@@ -50,7 +56,14 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
     }
     if (roomsState.hasError) {
       return Scaffold(
-        body: Center(child: Text('Could not load rooms. ${roomsState.error}')),
+        body: StayEasyStatusState(
+          title: 'Rooms are temporarily unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.bed_outlined,
+          actionLabel: 'Retry',
+          isError: true,
+          onAction: () => ref.invalidate(roomsForHotelFutureProvider(hotel.id)),
+        ),
       );
     }
     final rooms = roomsState.value ?? const [];
@@ -198,6 +211,8 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                     ReviewPreview(
                       reviews: ref.watch(hotelReviewsProvider(hotel.id)),
                       title: 'Recent verified guest review',
+                      onRetry: () =>
+                          ref.invalidate(hotelReviewsProvider(hotel.id)),
                     ),
                     const SizedBox(height: 28),
                     SectionTitle(
@@ -206,16 +221,25 @@ class _HotelDetailsPageState extends ConsumerState<HotelDetailsPage> {
                       action: '${rooms.length} options',
                     ),
                     const SizedBox(height: 12),
-                    for (final room in rooms) ...[
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: RoomCard(
-                          room: room,
-                          onTap: () =>
-                              context.push(AppRoutes.roomPath(room.id)),
+                    if (rooms.isEmpty)
+                      StayEasyStatusState(
+                        title: 'No rooms available yet',
+                        message: 'Browse other stays while rooms are updated.',
+                        icon: Icons.bed_outlined,
+                        actionLabel: 'Browse stays',
+                        onAction: () => context.go(AppRoutes.search),
+                      )
+                    else
+                      for (final room in rooms) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: RoomCard(
+                            room: room,
+                            onTap: () =>
+                                context.push(AppRoutes.roomPath(room.id)),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
                   ],
                 ),
               ),

@@ -6,6 +6,7 @@ import '../../../../app/router/app_routes.dart';
 import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
 import '../search_filter_sheet.dart';
@@ -22,8 +23,17 @@ class SearchResultsPage extends ConsumerWidget {
     }
     if (resultsState.hasError) {
       return Scaffold(
-        body: Center(
-          child: Text('Could not load search results. ${resultsState.error}'),
+        body: StayEasyStatusState(
+          title: 'Search is temporarily unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.search_off_rounded,
+          actionLabel: 'Retry search',
+          isError: true,
+          onAction: () {
+            ref.invalidate(hotelsFutureProvider);
+            ref.invalidate(allRoomsFutureProvider);
+            ref.invalidate(searchResultsFutureProvider);
+          },
         ),
       );
     }
@@ -88,12 +98,15 @@ class SearchResultsPage extends ConsumerWidget {
               if (results.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 36),
-                  child: Center(
-                    child: Text(
-                      'No stays match “${search.destination}”. Try another destination.',
-                      textAlign: TextAlign.center,
-                      style: StayEasyTypography.bodyLarge,
-                    ),
+                  child: StayEasyStatusState(
+                    title: 'No matching stays',
+                    message: search.destination.isEmpty
+                        ? 'Try changing your filters to see more stays.'
+                        : 'No stays match “${search.destination}”. Clear filters to browse all available stays.',
+                    icon: Icons.search_off_rounded,
+                    actionLabel: 'Clear filters',
+                    onAction: () =>
+                        ref.read(searchStateProvider.notifier).resetFilters(),
                   ),
                 )
               else

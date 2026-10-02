@@ -8,12 +8,60 @@ import 'package:stayeasy/app/stayeasy_app.dart';
 import 'package:stayeasy/core/theme/stayeasy_colors.dart';
 import 'package:stayeasy/features/discovery/application/discovery_providers.dart';
 import 'package:stayeasy/features/discovery/data/mock_stay_data.dart';
+import 'package:stayeasy/features/discovery/data/hotel_repositories.dart';
+import 'package:stayeasy/features/discovery/domain/hotel_repository.dart';
+import 'package:stayeasy/features/discovery/domain/models/hotel.dart';
+import 'package:stayeasy/features/discovery/domain/models/room.dart';
 
 Widget buildApp({String initialLocation = AppRoutes.explore}) => ProviderScope(
   child: StayEasyApp(router: createAppRouter(initialLocation: initialLocation)),
 );
 
 void main() {
+  testWidgets('Explore data error is safe and retries successfully', (
+    tester,
+  ) async {
+    final repository = _RetryHotelRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [hotelRepositoryProvider.overrideWithValue(repository)],
+        child: StayEasyApp(router: createAppRouter()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Stays are temporarily unavailable'), findsOneWidget);
+    expect(find.textContaining('connection failed internally'), findsNothing);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(repository.hotelRequests, 2);
+    expect(find.text('Where are you\nstaying next?'), findsOneWidget);
+  });
+
+  testWidgets('Empty search can clear filters and browse available stays', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [searchStateProvider.overrideWith(_NoResultsSearch.new)],
+        child: StayEasyApp(
+          router: createAppRouter(initialLocation: AppRoutes.search),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No matching stays'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Clear filters'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('All stays'), findsOneWidget);
+    expect(find.text('The Mercer Mumbai'), findsWidgets);
+  });
+
   testWidgets('Explore page renders the StayEasy discovery experience', (
     tester,
   ) async {
@@ -34,6 +82,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Mumbai stays'), findsOneWidget);
     expect(find.text('The Mercer Mumbai'), findsWidgets);
+  });
+
+  testWidgets('Search filters sheet fits reference widths', (tester) async {
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    for (final width in [390.0, 834.0, 1440.0]) {
+      tester.view.physicalSize = Size(width, 1000);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpWidget(buildApp(initialLocation: AppRoutes.search));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Filter'));
+      await tester.pumpAndSettle();
+      expect(find.text('Search filters'), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'filter sheet at $width');
+      await tester.scrollUntilVisible(
+        find.text('Apply filters'),
+        500,
+        scrollable: find.byType(Scrollable).last,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply filters'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: 'filter apply at $width');
+    }
   });
 
   testWidgets('hotel selection opens Hotel Details by ID', (tester) async {
@@ -156,6 +230,8 @@ void main() {
       '/booking/confirmation',
       '/booking/success',
       '/trips',
+      AppRoutes.signIn,
+      AppRoutes.signUp,
     ];
     for (final width in widths) {
       tester.view.physicalSize = Size(width, 1000);
@@ -185,4 +261,31 @@ void main() {
       expect(asset.lengthInBytes, greaterThan(0), reason: path);
     }
   });
+}
+
+class _NoResultsSearch extends SearchStateNotifier {
+  @override
+  SearchState build() => const SearchState(destination: 'Atlantis');
+}
+
+class _RetryHotelRepository implements HotelRepository {
+  final MockHotelRepository _delegate = MockHotelRepository();
+  int hotelRequests = 0;
+
+  @override
+  Future<List<Hotel>> getHotels() async {
+    hotelRequests++;
+    if (hotelRequests == 1) throw StateError('connection failed internally');
+    return _delegate.getHotels();
+  }
+
+  @override
+  Future<Hotel?> getHotel(String id) => _delegate.getHotel(id);
+
+  @override
+  Future<List<Room>> getRooms({String? hotelId}) =>
+      _delegate.getRooms(hotelId: hotelId);
+
+  @override
+  Future<Room?> getRoom(String id) => _delegate.getRoom(id);
 }

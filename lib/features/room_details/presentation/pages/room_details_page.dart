@@ -11,6 +11,7 @@ import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../../discovery/presentation/widgets/discovery_widgets.dart';
 import '../../../virtual_tour/application/virtual_tour_catalog.dart';
@@ -27,8 +28,13 @@ class RoomDetailsPage extends ConsumerWidget {
     }
     if (roomState.hasError) {
       return Scaffold(
-        body: Center(
-          child: Text('Could not load this room. ${roomState.error}'),
+        body: StayEasyStatusState(
+          title: 'Room details are unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.bed_outlined,
+          actionLabel: 'Retry',
+          isError: true,
+          onAction: () => ref.invalidate(roomFutureProvider(roomId)),
         ),
       );
     }
@@ -142,6 +148,7 @@ class RoomDetailsPage extends ConsumerWidget {
               ReviewPreview(
                 reviews: ref.watch(roomReviewsProvider(roomId)),
                 title: 'Selected room feedback',
+                onRetry: () => ref.invalidate(roomReviewsProvider(roomId)),
               ),
             ],
           ),

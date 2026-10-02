@@ -7,6 +7,7 @@ import '../../../../core/backend/supabase_providers.dart';
 import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../application/booking_provider.dart';
 import '../widgets/booking_widgets.dart';
 
@@ -108,7 +109,15 @@ class BookingGuestPage extends ConsumerWidget {
                     state.subtotal,
                   ),
                   PriceLine('Taxes & fees', state.taxes),
-                  PriceLine('Total', state.total, bold: true),
+                  PriceLine('StayEasy discount', -state.discount),
+                  PriceLine('Estimated total', state.total, bold: true),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Final price is confirmed when you place your booking.',
+                    style: StayEasyTypography.caption.copyWith(
+                      color: StayEasyColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -197,7 +206,14 @@ class BookingSummaryPage extends ConsumerWidget {
                   PriceLine('Room · ${state.nights} nights', state.subtotal),
                   PriceLine('Taxes & fees', state.taxes),
                   PriceLine('StayEasy discount', -state.discount),
-                  PriceLine('Total', state.total, bold: true),
+                  PriceLine('Estimated total', state.total, bold: true),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Final price is confirmed when you place your booking.',
+                    style: StayEasyTypography.caption.copyWith(
+                      color: StayEasyColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -285,7 +301,7 @@ class BookingConfirmationPage extends ConsumerWidget {
                 const SizedBox(height: 12),
                 Text('${hotel?.name ?? ''} · ${room?.name ?? ''}'),
                 Text('${_dates(state)} · ${state.guests} guests'),
-                Text('Total ₹${state.total}'),
+                Text('Estimated total ₹${state.total}'),
                 const SizedBox(height: 20),
                 Row(
                   children: [
@@ -415,6 +431,7 @@ class MyTripsPage extends ConsumerStatefulWidget {
 
 class _MyTripsPageState extends ConsumerState<MyTripsPage> {
   String _filter = 'Upcoming';
+  final Set<String> _cancellingBookings = {};
 
   @override
   Widget build(BuildContext context) {
@@ -441,9 +458,14 @@ class _MyTripsPageState extends ConsumerState<MyTripsPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (tripsState.hasError) {
-      return const Scaffold(
-        body: Center(
-          child: Text('Could not load your trips. Please try again.'),
+      return Scaffold(
+        body: StayEasyStatusState(
+          title: 'Your trips are unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.luggage_outlined,
+          actionLabel: 'Retry trips',
+          isError: true,
+          onAction: () => ref.invalidate(myBookingsProvider),
         ),
       );
     }
@@ -515,27 +537,60 @@ class _MyTripsPageState extends ConsumerState<MyTripsPage> {
                       Text('₹${trip.total.toStringAsFixed(0)}'),
                       if (trip.status == 'confirmed' &&
                           trip.checkOut.isAfter(DateTime.now()))
-                        OutlinedButton(
-                          onPressed: () async {
-                            try {
-                              await ref
-                                  .read(bookingRepositoryProvider)
-                                  .cancel(trip.id);
-                              ref.invalidate(myBookingsProvider);
-                              ref.invalidate(availabilityProvider(trip.roomId));
-                            } catch (_) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'We couldn’t cancel this booking. Please try again.',
-                                    ),
+                        OutlinedButton.icon(
+                          onPressed: _cancellingBookings.contains(trip.id)
+                              ? null
+                              : () async {
+                                  if (_cancellingBookings.contains(trip.id)) {
+                                    return;
+                                  }
+                                  setState(
+                                    () => _cancellingBookings.add(trip.id),
+                                  );
+                                  try {
+                                    await ref
+                                        .read(bookingRepositoryProvider)
+                                        .cancel(trip.id);
+                                    ref.invalidate(myBookingsProvider);
+                                    ref.invalidate(
+                                      availabilityProvider(trip.roomId),
+                                    );
+                                  } catch (_) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'We couldn’t cancel this booking. Please try again.',
+                                              ),
+                                            ),
+                                          );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(
+                                        () =>
+                                            _cancellingBookings.remove(trip.id),
+                                      );
+                                    }
+                                  }
+                                },
+                          icon: _cancellingBookings.contains(trip.id)
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
-                                );
-                              }
-                            }
-                          },
-                          child: const Text('Cancel booking'),
+                                )
+                              : const Icon(Icons.event_busy_outlined),
+                          label: Text(
+                            _cancellingBookings.contains(trip.id)
+                                ? 'Cancelling…'
+                                : 'Cancel booking',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(44, 44),
+                          ),
                         ),
                     ],
                   ),
@@ -591,10 +646,21 @@ class _MyTripsPageState extends ConsumerState<MyTripsPage> {
               )
             else
               BookingCard(
-                child: Text(
-                  _filter == 'Upcoming'
-                      ? 'No upcoming stays yet.'
-                      : 'No ${_filter.toLowerCase()} stays yet.',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _filter == 'Upcoming'
+                          ? 'No upcoming stays yet.'
+                          : 'No ${_filter.toLowerCase()} stays yet.',
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: () => context.go(AppRoutes.explore),
+                      icon: const Icon(Icons.explore_outlined),
+                      label: const Text('Explore stays'),
+                    ),
+                  ],
                 ),
               ),
             const SizedBox(height: 16),

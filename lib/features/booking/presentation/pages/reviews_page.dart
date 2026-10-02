@@ -6,6 +6,7 @@ import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../application/booking_provider.dart';
 import '../../../ai/application/ai_providers.dart';
 import '../../../ai/domain/ai_models.dart';
@@ -21,8 +22,18 @@ class ReviewsPage extends ConsumerWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (reviewsState.hasError) {
-      return const Scaffold(
-        body: Center(child: Text('Reviews are unavailable right now.')),
+      return Scaffold(
+        body: StayEasyStatusState(
+          title: 'Guest reviews are unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.reviews_outlined,
+          actionLabel: 'Retry reviews',
+          isError: true,
+          onAction: () {
+            ref.invalidate(reviewsProvider);
+            ref.invalidate(rankedReviewsProvider);
+          },
+        ),
       );
     }
     final reviews = reviewsState.value ?? const [];

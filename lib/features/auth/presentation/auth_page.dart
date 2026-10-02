@@ -95,6 +95,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                       TextFormField(
                         controller: _password,
                         obscureText: true,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) => _submit(),
                         decoration: const InputDecoration(
                           labelText: 'Password',
                         ),
@@ -155,6 +157,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   }
 
   Future<void> _submit() async {
+    if (_working) return;
     if (!_form.currentState!.validate()) return;
     setState(() {
       _working = true;

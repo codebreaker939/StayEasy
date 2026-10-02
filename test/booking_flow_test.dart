@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:stayeasy/app/router/app_router.dart';
 import 'package:stayeasy/app/router/app_routes.dart';
 import 'package:stayeasy/app/stayeasy_app.dart';
+import 'package:stayeasy/core/backend/supabase_providers.dart';
+import 'package:stayeasy/features/auth/domain/auth_repository.dart';
 import 'package:stayeasy/features/booking/application/booking_provider.dart';
+import 'package:stayeasy/features/booking/domain/booking_repository.dart';
 import 'package:stayeasy/features/booking/domain/review.dart';
 
 Widget appAt(String location) => ProviderScope(
@@ -113,6 +118,12 @@ void main() {
     await tester.pumpWidget(appAt(AppRoutes.datesPath('mercer-deluxe')));
     await tester.pumpAndSettle();
     expect(find.text('October 2026'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('Continue ·'),
+      400,
+      scrollable: find.byType(Scrollable).last,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Continue ·'));
     await tester.pumpAndSettle();
     expect(find.text('Relevant to your October stay'), findsOneWidget);
@@ -133,11 +144,19 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(2), '+91 9876543210');
     await tester.drag(find.byType(ListView), const Offset(0, -700));
     await tester.pumpAndSettle();
+    expect(find.text('StayEasy discount'), findsOneWidget);
+    expect(find.text('Estimated total'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, 'Review booking'));
     await tester.pumpAndSettle();
     expect(find.text('Price details'), findsOneWidget);
     expect(find.text('₹19562'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.textContaining('Confirm booking'),
+      300,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.ensureVisible(find.textContaining('Confirm booking'));
+    await tester.pumpAndSettle();
     await tester.tap(find.textContaining('Confirm booking'));
     await tester.pumpAndSettle();
     expect(find.text('Confirm this booking?'), findsOneWidget);
@@ -150,4 +169,94 @@ void main() {
     expect(find.textContaining('Booking SE-'), findsOneWidget);
     expect(find.text('UPCOMING · 18 OCT'), findsOneWidget);
   });
+
+  testWidgets('My Trips disables cancellation while the request is pending', (
+    tester,
+  ) async {
+    final cancellation = Completer<void>();
+    final repository = _PendingCancelRepository(cancellation);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          backendEnabledProvider.overrideWithValue(true),
+          authProfileProvider.overrideWith(
+            (ref) => Stream.value(
+              const StayEasyProfile(
+                id: 'guest-1',
+                email: 'guest@example.test',
+                role: 'user',
+              ),
+            ),
+          ),
+          myBookingsProvider.overrideWith(
+            (ref) async => [
+              StayBooking(
+                id: 'booking-1',
+                code: 'SE-TEST-0001',
+                hotelId: 'hotel-1',
+                hotelName: 'Harbour House',
+                roomId: 'room-1',
+                roomName: 'Deluxe King',
+                checkIn: DateTime(2026, 10, 18),
+                checkOut: DateTime(2026, 10, 22),
+                guests: 2,
+                total: 19562,
+                status: 'confirmed',
+                guestName: 'Maya Guest',
+                guestEmail: 'maya@example.test',
+              ),
+            ],
+          ),
+          bookingRepositoryProvider.overrideWithValue(repository),
+        ],
+        child: StayEasyApp(
+          router: createAppRouter(initialLocation: AppRoutes.trips),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Cancel booking'));
+    await tester.pump();
+
+    expect(repository.cancelCalls, 1);
+    expect(find.text('Cancelling…'), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Cancelling…'),
+          )
+          .onPressed,
+      isNull,
+    );
+
+    cancellation.complete();
+    await tester.pumpAndSettle();
+  });
+}
+
+class _PendingCancelRepository implements BookingRepository {
+  _PendingCancelRepository(this.cancellation);
+  final Completer<void> cancellation;
+  int cancelCalls = 0;
+
+  @override
+  Future<void> cancel(String bookingId) {
+    cancelCalls++;
+    return cancellation.future;
+  }
+
+  @override
+  Future<(String id, String code, BookingPrice price)> create({
+    required String roomId,
+    required DateTime checkIn,
+    required DateTime checkOut,
+    required int guests,
+    required String guestName,
+    required String guestEmail,
+    String? phone,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<List<StayBooking>> getMyBookings() => Future.value(const []);
 }

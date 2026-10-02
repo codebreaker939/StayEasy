@@ -9,6 +9,7 @@ import '../../../core/theme/stayeasy_elevation.dart';
 import '../../../core/theme/stayeasy_radii.dart';
 import '../../../core/theme/stayeasy_spacing.dart';
 import '../../../core/theme/stayeasy_typography.dart';
+import '../../../core/widgets/stayeasy_status_state.dart';
 import '../../auth/domain/auth_repository.dart';
 import '../../booking/application/booking_provider.dart';
 import '../data/admin_repository.dart';
@@ -363,7 +364,14 @@ class _DashboardBody extends ConsumerWidget {
           return const Center(child: CircularProgressIndicator());
         }
         if (snapshot.hasError) {
-          return const Center(child: Text('Could not load dashboard data.'));
+          return StayEasyStatusState(
+            title: 'Dashboard data is unavailable',
+            message: 'Check admin access and try again.',
+            icon: Icons.dashboard_outlined,
+            actionLabel: 'Retry dashboard',
+            isError: true,
+            onAction: () => ref.invalidate(adminRepositoryProvider),
+          );
         }
         final data = snapshot.data!;
         final recent = data[4] as List<Map<String, dynamic>>;
@@ -434,7 +442,7 @@ class _DashboardBody extends ConsumerWidget {
                     children: [
                       SizedBox(height: 420, child: recentPanel),
                       const SizedBox(height: 20),
-                      SizedBox(height: 420, child: operationsPanel),
+                      SizedBox(height: 520, child: operationsPanel),
                     ],
                   );
                 }
@@ -825,9 +833,13 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
         return Padding(
           padding: const EdgeInsets.all(24),
           child: _AdminSurface(
-            child: _EmptyState(
-              message:
-                  'Could not load this section. Check access and try again.',
+            child: StayEasyStatusState(
+              title: 'This admin section is unavailable',
+              message: 'Check admin access and try again.',
+              icon: Icons.cloud_off_outlined,
+              actionLabel: 'Retry',
+              isError: true,
+              onAction: _refresh,
             ),
           ),
         );
@@ -1143,9 +1155,11 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
           childAspectRatio: columns == 3
-              ? 1.05
+              ? 1.0
               : columns == 2
               ? 0.95
+              : width >= StayEasyBreakpoints.compactEnd
+              ? 2.1
               : 0.88,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -1171,9 +1185,10 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
       case AdminSection.hotels:
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              ClipRRect(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final active = row['is_active'] == true;
+              final image = ClipRRect(
                 borderRadius: StayEasyRadii.rounded12,
                 child: Image.asset(
                   _hotelFallback('${row['city'] ?? ''}'),
@@ -1183,56 +1198,78 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
                   errorBuilder: (_, _, _) =>
                       const _LeadingIcon(icon: Icons.hotel_outlined),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              );
+              final details = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${row['name']}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: StayEasyTypography.titleMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${row['city']} · ${row['address'] ?? 'Address not set'} · ★ ${row['rating'] ?? '—'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: StayEasyTypography.bodySmall.copyWith(
+                      color: StayEasyColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    '${((row['rooms'] as List?) ?? const []).length} room types',
+                    style: StayEasyTypography.bodySmall.copyWith(
+                      color: StayEasyColors.textSecondary,
+                    ),
+                  ),
+                ],
+              );
+              final actions = Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  _StatusChip(status: active ? 'Active' : 'Inactive'),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'Edit hotel',
+                    onPressed: () => _editHotel(context, row),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  IconButton(
+                    tooltip: active ? 'Deactivate hotel' : 'Activate hotel',
+                    onPressed: () => _toggleHotel(row),
+                    icon: Icon(
+                      active
+                          ? Icons.pause_circle_outline
+                          : Icons.play_circle_outline,
+                    ),
+                  ),
+                ],
+              );
+              if (constraints.maxWidth < 660) {
+                return Column(
                   children: [
-                    Text(
-                      '${row['name']}',
-                      style: StayEasyTypography.titleMedium,
+                    Row(
+                      children: [
+                        image,
+                        const SizedBox(width: 12),
+                        Expanded(child: details),
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${row['city']} · ${row['address'] ?? 'Address not set'} · ★ ${row['rating'] ?? '—'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: StayEasyTypography.bodySmall.copyWith(
-                        color: StayEasyColors.textSecondary,
-                      ),
-                    ),
-                    Text(
-                      '${((row['rooms'] as List?) ?? const []).length} room types',
-                      style: StayEasyTypography.bodySmall.copyWith(
-                        color: StayEasyColors.textSecondary,
-                      ),
-                    ),
+                    actions,
                   ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              _StatusChip(
-                status: row['is_active'] == true ? 'Active' : 'Inactive',
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: 'Edit hotel',
-                onPressed: () => _editHotel(context, row),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: row['is_active'] == true
-                    ? 'Deactivate hotel'
-                    : 'Activate hotel',
-                onPressed: () => _toggleHotel(row),
-                icon: Icon(
-                  row['is_active'] == true
-                      ? Icons.pause_circle_outline
-                      : Icons.play_circle_outline,
-                ),
-              ),
-            ],
+                );
+              }
+              return Row(
+                children: [
+                  image,
+                  const SizedBox(width: 16),
+                  Expanded(child: details),
+                  const SizedBox(width: 12),
+                  actions,
+                ],
+              );
+            },
           ),
         );
       case AdminSection.rooms:
@@ -1409,7 +1446,7 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          height: 132,
+          height: 112,
           width: double.infinity,
           child: Stack(
             fit: StackFit.expand,
@@ -1465,31 +1502,47 @@ class _AdminListBodyState extends ConsumerState<_AdminListBody> {
                   ],
                 ),
                 const Spacer(),
-                Row(
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _editRoom(context, row),
-                      icon: const Icon(Icons.edit_outlined, size: 17),
-                      label: const Text('Edit'),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () =>
-                          _editAvailability(context, row['id'] as String),
-                      child: const Text('Availability'),
-                    ),
-                    IconButton(
-                      tooltip: row['is_active'] == true
-                          ? 'Deactivate room'
-                          : 'Activate room',
-                      onPressed: () => _toggleRoom(row),
-                      icon: Icon(
-                        row['is_active'] == true
-                            ? Icons.pause_circle_outline
-                            : Icons.play_circle_outline,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final compactActions = constraints.maxWidth < 340;
+                    return Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 4,
+                      runSpacing: 0,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _editRoom(context, row),
+                          icon: const Icon(Icons.edit_outlined, size: 17),
+                          label: const Text('Edit'),
+                        ),
+                        if (compactActions)
+                          IconButton(
+                            tooltip: 'Edit availability',
+                            onPressed: () =>
+                                _editAvailability(context, row['id'] as String),
+                            icon: const Icon(Icons.event_available_outlined),
+                          )
+                        else
+                          TextButton(
+                            onPressed: () =>
+                                _editAvailability(context, row['id'] as String),
+                            child: const Text('Availability'),
+                          ),
+                        IconButton(
+                          tooltip: row['is_active'] == true
+                              ? 'Deactivate room'
+                              : 'Activate room',
+                          onPressed: () => _toggleRoom(row),
+                          icon: Icon(
+                            row['is_active'] == true
+                                ? Icons.pause_circle_outline
+                                : Icons.play_circle_outline,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -1971,6 +2024,7 @@ class _FilterDropdown<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     height: 44,
     child: DropdownButtonFormField<T>(
+      isExpanded: true,
       initialValue: value,
       decoration: InputDecoration(
         hintText: hint,
@@ -1988,7 +2042,10 @@ class _FilterDropdown<T extends Object> extends StatelessWidget {
       ),
       items: [
         for (final item in items)
-          DropdownMenuItem(value: item, child: Text(label(item))),
+          DropdownMenuItem(
+            value: item,
+            child: Text(label(item), overflow: TextOverflow.ellipsis),
+          ),
       ],
       onChanged: (next) {
         if (next != null) onChanged(next);
@@ -2123,6 +2180,7 @@ class _AvailabilityControlsState extends State<_AvailabilityControls> {
                 child: FutureBuilder<List<Map<String, dynamic>>>(
                   future: widget.rooms,
                   builder: (context, snapshot) => DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _roomId,
                     decoration: const InputDecoration(
                       labelText: 'Room',

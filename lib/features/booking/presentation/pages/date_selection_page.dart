@@ -7,6 +7,7 @@ import '../../../../core/theme/stayeasy_colors.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../../discovery/application/discovery_providers.dart';
 import '../../application/booking_provider.dart';
 import '../../domain/booking_repository.dart';
@@ -44,8 +45,18 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (roomState.hasError || availabilityState.hasError) {
-      return const Scaffold(
-        body: Center(child: Text('Could not load dates. Please try again.')),
+      return Scaffold(
+        body: StayEasyStatusState(
+          title: 'Dates are temporarily unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.calendar_month_outlined,
+          actionLabel: 'Retry dates',
+          isError: true,
+          onAction: () {
+            ref.invalidate(roomFutureProvider(widget.roomId));
+            ref.invalidate(availabilityProvider(widget.roomId));
+          },
+        ),
       );
     }
     final availability =
@@ -122,16 +133,14 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.chevron_left),
                       Text(
                         'October 2026',
                         style: StayEasyTypography.editorialHero.copyWith(
                           fontSize: 21,
                         ),
                       ),
-                      const Icon(Icons.chevron_right),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -163,6 +172,7 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
                           crossAxisCount: 7,
                           mainAxisSpacing: 3,
                           crossAxisSpacing: 3,
+                          mainAxisExtent: 44,
                         ),
                     itemBuilder: (context, index) {
                       final day = index - offset + 1;
@@ -241,10 +251,14 @@ class _DateSelectionPageState extends ConsumerState<DateSelectionPage> {
                     booking.subtotal,
                   ),
                   PriceLine('Taxes & fees', booking.taxes),
-                  PriceLine(
-                    'Estimated total',
-                    booking.subtotal + booking.taxes,
-                    bold: true,
+                  PriceLine('Estimated StayEasy discount', -booking.discount),
+                  PriceLine('Estimated total', booking.total, bold: true),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Final price is confirmed when you place your booking.',
+                    style: StayEasyTypography.caption.copyWith(
+                      color: StayEasyColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

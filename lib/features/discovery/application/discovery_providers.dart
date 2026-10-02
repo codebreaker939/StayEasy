@@ -80,6 +80,9 @@ class SearchStateNotifier extends Notifier<SearchState> {
 
   void setDestination(String value) =>
       state = state.copyWith(destination: value);
+
+  void resetFilters() =>
+      state = const SearchState(destination: '', dates: 'Any dates');
   void setGuests(int value) =>
       state = state.copyWith(guests: value.clamp(1, 8));
   void setSort(HotelSort value) => state = state.copyWith(sort: value);

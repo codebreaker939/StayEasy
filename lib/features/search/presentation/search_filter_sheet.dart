@@ -229,6 +229,7 @@ Widget _choiceGroup(
       Text(title, style: StayEasyTypography.labelLarge),
       Wrap(
         spacing: 6,
+        runSpacing: 4,
         children: [
           for (final choice in choices)
             FilterChip(

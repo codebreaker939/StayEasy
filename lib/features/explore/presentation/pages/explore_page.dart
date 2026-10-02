@@ -9,6 +9,7 @@ import '../../../../core/theme/stayeasy_elevation.dart';
 import '../../../../core/theme/stayeasy_radii.dart';
 import '../../../../core/theme/stayeasy_spacing.dart';
 import '../../../../core/theme/stayeasy_typography.dart';
+import '../../../../core/widgets/stayeasy_status_state.dart';
 import '../../../booking/application/booking_provider.dart';
 import '../../../ai/presentation/ai_search_panel.dart';
 import '../../../discovery/application/discovery_providers.dart';
@@ -27,7 +28,14 @@ class ExplorePage extends ConsumerWidget {
     }
     if (hotelsState.hasError) {
       return Scaffold(
-        body: Center(child: Text('Could not load stays. ${hotelsState.error}')),
+        body: StayEasyStatusState(
+          title: 'Stays are temporarily unavailable',
+          message: 'Check your connection and try again.',
+          icon: Icons.hotel_outlined,
+          actionLabel: 'Retry',
+          isError: true,
+          onAction: () => ref.invalidate(hotelsFutureProvider),
+        ),
       );
     }
     final hotels = hotelsState.value ?? const [];
@@ -147,7 +155,15 @@ class ExplorePage extends ConsumerWidget {
                 onAction: () => context.go(AppRoutes.search),
               ),
               const SizedBox(height: 12),
-              if (expanded)
+              if (hotels.isEmpty)
+                StayEasyStatusState(
+                  title: 'No stays available yet',
+                  message: 'Refresh to check for available stays.',
+                  icon: Icons.hotel_outlined,
+                  actionLabel: 'Refresh stays',
+                  onAction: () => ref.invalidate(hotelsFutureProvider),
+                )
+              else if (expanded)
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),

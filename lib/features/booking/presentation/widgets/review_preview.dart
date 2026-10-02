@@ -8,9 +8,15 @@ import '../../../../core/theme/stayeasy_typography.dart';
 import '../../domain/review.dart';
 
 class ReviewPreview extends StatelessWidget {
-  const ReviewPreview({super.key, required this.reviews, required this.title});
+  const ReviewPreview({
+    super.key,
+    required this.reviews,
+    required this.title,
+    this.onRetry,
+  });
   final AsyncValue<List<Review>> reviews;
   final String title;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -21,8 +27,30 @@ class ReviewPreview extends StatelessWidget {
       borderRadius: StayEasyRadii.rounded16,
     ),
     child: reviews.when(
-      loading: () => const LinearProgressIndicator(),
-      error: (_, _) => const Text('Guest reviews are unavailable right now.'),
+      loading: () => const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LinearProgressIndicator(),
+          SizedBox(height: 8),
+          Text('Loading guest reviews…'),
+        ],
+      ),
+      error: (_, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Guest reviews are unavailable right now.'),
+          if (onRetry != null)
+            TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry reviews'),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(44, 44),
+                padding: EdgeInsets.zero,
+              ),
+            ),
+        ],
+      ),
       data: (rows) {
         final eligible = rows
             .where((review) => review.verified && review.text.trim().isNotEmpty)
